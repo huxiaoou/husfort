@@ -2,8 +2,10 @@ README.md
 setup.py
 husfort/__init__.py
 husfort/qcalendar.py
+husfort/qevaluation.py
 husfort/qinstruments.py
 husfort/qmails.py
+husfort/qsimulation.py
 husfort/qsqlite.py
 husfort/qutility.py
 husfort.egg-info/PKG-INFO

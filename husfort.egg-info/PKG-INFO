@@ -2,7 +2,7 @@ Metadata-Version: 2.1
 Name: husfort
 Version: 1.0.0
 Summary: Handy & Utility Solution For Operation, Research and Trading
-Home-page: https://github.com/huxiaoou/skyrimMini
+Home-page: https://github.com/huxiaoou/husfort
 Author: huxiaoou
 Author-email: 516984451@qq.com
 Classifier: Programming Language :: Python :: 3
@@ -26,3 +26,29 @@ python setup.py build
 python setup.py sdist
 pip install .\dist\husfort-1.0.0.tar.gz
 ```
+
+## Module Description
+
+### qcalendar
+
++ provide some classes to manage trade dates and sections
+
+### qevaluation
+
++ provide a class to evaluate portfolio performance
+
+### qinstruments
+
++ provide a class to manage instruments information of Futures
+
+### qsimulation
+
++ provide a class to do simulations with prices and quantity
+
+### qsqlite
+
++ provide classes to provide quick access to sqlite database
+
+### qutility
+
++ provide some miscellaneous functions

@@ -28,12 +28,6 @@ class CTable(object):
         self.m_cmd_sql_update_template = f"INSERT OR REPLACE INTO {self.table_name} ({str_columns}) values({str_args})"
 
 
-class CLib1Tab1(object):
-    def __init__(self, lib_name: str, tab: CTable):
-        self.lib_name: str = lib_name
-        self.tab: CTable = tab
-
-
 class CMangerLibBase(object):
     def __init__(self, db_save_dir: str, db_name: str):
         self.db_save_dir: str = db_save_dir
@@ -260,3 +254,64 @@ class CManagerLibWriter(CManagerLibReader):
         self.delete_by_conditions(conditions=[("trade_date", "=", section.trade_date), ("section", "=", section.section)],
                                   using_default_table=using_default_table, table_name=table_name)
         return 0
+
+
+class CLib1Tab1(object):
+    def __init__(self, lib_name: str, table: CTable):
+        self.lib_name: str = lib_name
+        self.table: CTable = table
+
+
+class CQuickSqliteLib(object):
+    def __init__(self, lib_name: str, lib_save_dir: str):
+        self.lib_name = lib_name
+        self.lib_save_dir = lib_save_dir
+
+    def get_lib_struct(self) -> CLib1Tab1:
+        pass
+
+    def get_lib_writer(self, run_mode: str) -> CManagerLibWriter:
+        lib_struct = self.get_lib_struct()
+        lib_writer = CManagerLibWriter(self.lib_save_dir, lib_struct.lib_name)
+        lib_writer.initialize_table(lib_struct.table, run_mode == "O")
+        return lib_writer
+
+    def get_lib_reader(self) -> CManagerLibReader:
+        lib_struct = self.get_lib_struct()
+        lib_reader = CManagerLibReader(self.lib_save_dir, lib_struct.lib_name)
+        lib_reader.set_default(lib_struct.table.table_name)
+        return lib_reader
+
+
+# -----------------------------------------
+# ---- some frequently used lib struct ----
+# -----------------------------------------
+class CLibFactor(CQuickSqliteLib):
+    def __init__(self, factor: str, lib_save_dir: str):
+        self.factor = factor
+        super().__init__(lib_name=f"{self.factor}.db", lib_save_dir=lib_save_dir)
+
+    def get_lib_struct(self) -> CLib1Tab1:
+        return CLib1Tab1(
+            lib_name=self.lib_name,
+            table=CTable({
+                "table_name": self.factor,
+                "primary_keys": {"trade_date": "TEXT", "instrument": "TEXT"},
+                "value_columns": {"value": "REAL"},
+            })
+        )
+
+
+class CLibAvailableUniverse(CQuickSqliteLib):
+    def __init__(self, lib_save_dir: str):
+        super().__init__(lib_name=f"available_universe.db", lib_save_dir=lib_save_dir)
+
+    def get_lib_struct(self) -> CLib1Tab1:
+        return CLib1Tab1(
+            lib_name=self.lib_name,
+            table=CTable({
+                "table_name": "available_universe",
+                "primary_keys": {"trade_date": "TEXT", "instrument": "TEXT"},
+                "value_columns": {"return": "REAL", "amount": "REAL"},
+            })
+        )

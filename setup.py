@@ -12,7 +12,7 @@ setuptools.setup(
     packages=setuptools.find_packages(),
     long_description=long_description,
     long_description_content_type="text/markdown",
-    url="https://github.com/huxiaoou/skyrimMini",
+    url="https://github.com/huxiaoou/husfort",
     install_requires=["numpy", "pandas", "matplotlib"],
     classifiers=[
         "Programming Language :: Python :: 3",
