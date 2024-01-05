@@ -1,0 +1,28 @@
+Metadata-Version: 2.1
+Name: husfort
+Version: 1.0.0
+Summary: Handy & Utility Solution For Operation, Research and Trading
+Home-page: https://github.com/huxiaoou/skyrimMini
+Author: huxiaoou
+Author-email: 516984451@qq.com
+Classifier: Programming Language :: Python :: 3
+Classifier: License :: OSI Approved :: MIT License
+Classifier: Operating System :: OS Independent
+Requires-Python: >=3.11
+Description-Content-Type: text/markdown
+
+# Description
+
+HUSFORT is "Handy & Utility Solution For Operation, Research and Trading" for short.
+
+This project is designed to provide some highly frequently used tools in daily quantitative trading works.
+
+---
+
+## Build and Install
+
+```powershell
+python setup.py build
+python setup.py sdist
+pip install .\dist\husfort-1.0.0.tar.gz
+```
