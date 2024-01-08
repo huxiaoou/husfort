@@ -3,10 +3,7 @@ import numpy as np
 import pandas as pd
 from husfort.qsqlite import CManagerLibReader, CLibFactor
 from husfort.qcalendar import CCalendar
-from husfort.qinstruments import (CInstrumentInfoTable, CPosKey, CContract,
-                                  TDirection, TOperation,
-                                  CONST_DIRECTION_LNG, CONST_DIRECTION_SRT, CONST_OPERATION_OPN, CONST_OPERATION_CLS,
-                                  )
+from husfort.qinstruments import (CPosKey, CContract, TOperation, CONST_DIRECTION_LNG, CONST_DIRECTION_SRT, CONST_OPERATION_OPN, CONST_OPERATION_CLS)
 
 
 # ------------------------------------------ Classes general -------------------------------------------------------------------
@@ -105,8 +102,8 @@ class CTrade(object):
         return self._pos_key
 
     @property
-    def trade_id(self) -> tuple[str, TDirection]:
-        return self._pos_key.contract.contract, self._pos_key.direction
+    def contract_and_instru_id(self) -> tuple[str, str]:
+        return self._pos_key.contract_and_instru_id
 
     @property
     def execution(self) -> tuple[TOperation, int, float]:
@@ -135,7 +132,7 @@ class CPosition(object):
         self._pos_key: CPosKey = pos_key
         self._quantity: int = 0
 
-    def cal_quantity(self, price: float, allocated_mkt_val: float) -> 0:
+    def cal_quantity(self, price: float, allocated_mkt_val: float):
         self._quantity = int(np.round(allocated_mkt_val / price / self._pos_key.contract.contract_multiplier))
         return 0
 
@@ -190,7 +187,6 @@ class CPosition(object):
 class CPositionPlus(CPosition):
     def __init__(self, pos_key: CPosKey, cost_rate: float):
         super().__init__(pos_key=pos_key)
-
         self.cost_price: float = 0
         self.last_price: float = 0
         self.unrealized_pnl: float = 0
@@ -245,27 +241,26 @@ class CPositionPlus(CPosition):
 # --- Class: Portfolio
 class CPortfolio(object):
     def __init__(self, pid: str, init_cash: float, cost_reservation: float, cost_rate: float,
-                 dir_pid: str, dir_pid_trades: str, dir_pid_positions: str,
-                 verbose: bool = True):
+                 dir_pid: str, dir_pid_trades: str, dir_pid_positions: str, verbose: bool = True):
         # basic
         self.pid: str = pid
 
         # pnl
         self.init_cash: float = init_cash
         self.realized_pnl_daily_details: list[dict] = []
-        self.realized_pnl_daily_df: pd.DataFrame | None = None
+        self.realized_pnl_daily_df: pd.DataFrame = pd.DataFrame()
         self.realized_pnl_daily: float = 0
         self.realized_pnl_cum: float = 0
         self.unrealized_pnl: float = 0
         self.nav: float = self.init_cash + self.realized_pnl_cum + self.unrealized_pnl
 
         # position
-        self.manager_pos: dict[TypePositionKey, CPositionPlus] = {}
+        self.manager_pos: dict[CPosKey, CPositionPlus] = {}
 
         # additional
         self.cost_reservation: float = cost_reservation
         self.cost_rate: float = cost_rate
-        self.update_date: str = "YYYYMMDD"
+        self.update_date: str = ""  # format =  "YYYYMMDD"
 
         # save nav
         self.nav_daily_snapshots = []
@@ -274,32 +269,40 @@ class CPortfolio(object):
         self.dir_pid_trades: str = dir_pid_trades
         self.dir_pid_positions: str = dir_pid_positions
 
-    def cal_target_position(self, t_new_pos_df: pd.DataFrame, t_instru_info: CInstrumentInfoTable) -> dict[TypePositionKey, CPosition]:
+    def cal_target_position(self, new_pos_df: pd.DataFrame) -> dict[CPosKey, CPosition]:
         """
 
-        :param t_new_pos_df : a DataFrame with columns = ["contract", "price", "direction", "weight"]
-                                a.1 this "price" is used to estimate how much quantity should be allocated
-                                    for the instrument, CLOSE-PRICE is most frequently used, but other types
-                                    such as OPEN could do the job as well. if new position is to open with T
-                                    day's price, this "price" should be from T-1, which is available.
-                                a.2 direction: 1 for long, -1 for short.
-                                a.3 weight: non-negative value, sum of weights should not be greater than 1, if
-                                    leverage are not allowed
-        :param t_instru_info: an instance of CInstrumentInfoTable
+        :param new_pos_df : a DataFrame with columns = ["contract", "price", "direction", "weight"]
+                            a.1 this "price" is used to estimate how much quantity should be allocated
+                                for the instrument, CLOSE-PRICE is most frequently used, but other types
+                                such as OPEN could do the job as well. if new position is to open with T
+                                day's price, this "price" should be from T-1, which is available.
+                            a.2 direction: 1 for long, -1 for short.
+                            a.3 weight: non-negative value, sum of weights should not be greater than 1, if
+                                leverage are not allowed
         :return:
         """
-        mgr_new_pos: dict[TypePositionKey, CPosition] = {}
+        mgr_new_pos: dict[CPosKey, CPosition] = {}
         tot_allocated_amt = self.nav / (1 + self.cost_reservation)
-        for contract, direction, price, weight in zip(t_new_pos_df["contract"], t_new_pos_df["direction"], t_new_pos_df["price"], t_new_pos_df["weight"]):
-            tgt_pos = CPosition(contract=contract, direction=direction, instru_info=t_instru_info)
+        for contract, direction, price, weight in zip(new_pos_df["contract"], new_pos_df["direction"], new_pos_df["price"], new_pos_df["weight"]):
+            if direction == 1:
+                pos_key = CPosKey(contract, CONST_DIRECTION_LNG)
+            elif direction == -1:
+                pos_key = CPosKey(contract, CONST_DIRECTION_SRT)
+            elif direction == 0:
+                continue
+            else:
+                print(f"direction = {direction}")
+                raise ValueError
+            tgt_pos = CPosition(pos_key)
             tgt_pos.cal_quantity(price=price, allocated_mkt_val=tot_allocated_amt * weight)
-            key, qty = tgt_pos.get_key(), tgt_pos.quantity()
+            key, qty = tgt_pos.pos_key, tgt_pos.quantity
             if qty > 0:
                 mgr_new_pos[key] = tgt_pos
         return mgr_new_pos
 
-    def cal_trades_for_signal(self, mgr_new_pos: dict[TypePositionKey, CPosition]) -> list[CTrade]:
-        trades_list: list[CTrade] = []
+    def cal_trades_for_signal(self, mgr_new_pos: dict[CPosKey, CPosition]) -> list[CTrade]:
+        trades: list[CTrade] = []
         # cross comparison: step 0, check if new position is in old position
         for new_key, new_pos in mgr_new_pos.items():
             if new_key not in self.manager_pos:
@@ -307,46 +310,41 @@ class CPortfolio(object):
             else:
                 new_trade: CTrade = self.manager_pos[new_key].cal_trade_from_other_pos(other=new_pos)  # could be none
             if new_trade is not None:
-                trades_list.append(new_trade)
+                trades.append(new_trade)
 
         # cross comparison: step 1, check if old position is in new position
         for old_key, old_pos in self.manager_pos.items():
             if old_key not in mgr_new_pos:
                 new_trade: CTrade = old_pos.close()
-                trades_list.append(new_trade)
-        return trades_list
+                trades.append(new_trade)
+        return trades
 
     def cal_trades_for_major(self, mgr_major: CManagerMajor) -> list[CTrade]:
-        trades_list: list[CTrade] = []
+        trades: list[CTrade] = []
         for old_key, old_pos in self.manager_pos.items():
-            old_contract, instrument_id = old_pos.get_tuple_pos_id()
-            new_contract = mgr_major.inquiry_major_contract(instrument=instrument_id, trade_date=self.update_date)
-            if old_contract != new_contract:
+            old_contract_id, instrument = old_pos.pos_id
+            new_contract_id = mgr_major.inquiry_major_contract(instrument=instrument, trade_date=self.update_date)
+            if old_contract_id != new_contract_id:
                 trade_close_old = old_pos.close()
-                trade_open_new = CTrade(
-                    contract=new_contract, direction=old_pos.get_key()[1],
-                    operation=CONST_OPERATION_OPN, quantity=old_pos.quantity(),
-                    instrument_id=instrument_id, contract_multiplier=old_pos.get_contract_multiplier()
-                )
-                trades_list.append(trade_close_old)
-                trades_list.append(trade_open_new)
-        return trades_list
+                new_contract = CContract.gen_from_other(new_contract_id, old_key.contract)
+                pos_key = CPosKey(new_contract, old_pos.pos_key.direction)
+                trade_open_new = CTrade(pos_key=pos_key, operation=CONST_OPERATION_OPN, quantity=old_pos.quantity)
+                trades.append(trade_close_old)
+                trades.append(trade_open_new)
+        return trades
 
-    def update_from_trades(self, trades: list[CTrade], instru_info_tab: CInstrumentInfoTable):
+    def update_from_trades(self, trades: list[CTrade]):
         # trades loop
         for trade in trades:
-            trade_key = trade.get_key()
+            trade_key = trade.pos_key
             if trade_key not in self.manager_pos:
-                self.manager_pos[trade_key] = CPositionPlus(
-                    contract=trade_key[0], direction=trade_key[1],
-                    instru_info=instru_info_tab, cost_rate=self.cost_rate
-                )
+                self.manager_pos[trade_key] = CPositionPlus(pos_key=trade_key, cost_rate=self.cost_rate)
             trade_result = self.manager_pos[trade_key].update_from_trade(trade=trade)
             self.realized_pnl_daily_details.append(trade_result)
 
-        # remove empty trade
-        for pos_key in list(self.manager_pos.keys()):
-            if self.manager_pos[pos_key].is_empty():
+        # remove empty positions
+        for pos_key in self.manager_pos:
+            if self.manager_pos[pos_key].is_empty:
                 del self.manager_pos[pos_key]
         return 0
 
@@ -366,14 +364,14 @@ class CPortfolio(object):
                 price_type="close"
             )  # always use close to estimate the unrealized pnl
             if np.isnan(last_price):
-                print("nan price for {} {}".format(contract, self.update_date))
+                print(f"nan price for {contract} {self.update_date}")
                 self.unrealized_pnl += pos.update_from_last()
             else:
                 self.unrealized_pnl += pos.update_from_market_data(price=last_price)
         return 0
 
     def update_realized_pnl(self) -> int:
-        if len(self.realized_pnl_daily_details) > 0:
+        if self.realized_pnl_daily_details:
             self.realized_pnl_daily_df = pd.DataFrame(self.realized_pnl_daily_details)
             self.realized_pnl_daily = self.realized_pnl_daily_df["realized_pnl"].sum() - self.realized_pnl_daily_df["cost"].sum()
         self.realized_pnl_cum += self.realized_pnl_daily
@@ -411,20 +409,20 @@ class CPortfolio(object):
 
     def save_trades(self) -> int:
         if self.verbose and (self.realized_pnl_daily_df is not None):
-            records_trades_file = "{}.{}.trades.csv.gz".format(self.pid, self.update_date)
+            records_trades_file = f"{self.pid}.{self.update_date}.trades.csv.gz"
             records_trades_path = os.path.join(self.dir_pid_trades, records_trades_file)
             self.realized_pnl_daily_df.to_csv(records_trades_path, index=False, float_format="%.6f", compression="gzip")
         return 0
 
     def save_nav(self) -> int:
         nav_daily_df = pd.DataFrame(self.nav_daily_snapshots)
-        nav_daily_file = "{}.nav.daily.csv.gz".format(self.pid)
+        nav_daily_file = f"{self.pid}.nav.daily.csv.gz"
         nav_daily_path = os.path.join(self.dir_pid, nav_daily_file)
         nav_daily_df.to_csv(nav_daily_path, index=False, float_format="%.4f", compression="gzip")
         return 0
 
     def main_loop(self, simu_bgn_date: str, simu_stp_date: str, start_delay: int, hold_period_n: int,
-                  trade_calendar: CCalendar, instru_info: CInstrumentInfoTable,
+                  trade_calendar: CCalendar,
                   mgr_signal: CManagerSignal, mgr_md: CManagerMarketData, mgr_major: CManagerMajor):
         iter_trade_dates_list = trade_calendar.get_iter_list(bgn_date=simu_bgn_date, stp_date=simu_stp_date)
         for ti, trade_date in enumerate(iter_trade_dates_list):
@@ -435,19 +433,17 @@ class CPortfolio(object):
             # --- check signal and cal new positions
             if (ti - start_delay) % hold_period_n == 0:  # ti is an execution date
                 new_pos_df = mgr_signal.cal_position_header(sig_date=signal_date)
-                mgr_new_pos: dict[TypePositionKey, CPosition] = self.cal_target_position(t_new_pos_df=new_pos_df, t_instru_info=instru_info)
+                mgr_new_pos: dict[CPosKey, CPosition] = self.cal_target_position(new_pos_df=new_pos_df)
                 array_new_trades = self.cal_trades_for_signal(mgr_new_pos=mgr_new_pos)
                 # no major-shift check is necessary
                 # because signal would contain this information itself already
             else:
                 # array_new_trades = []
                 array_new_trades = self.cal_trades_for_major(mgr_major=mgr_major)  # use this function to check for major-shift
-
             for new_trade in array_new_trades:
-                contract, instrument_id = new_trade.trade_id()
-                executed_price = mgr_md.inquiry_price_at_date(contact=contract, instrument=instrument_id, trade_date=trade_date, price_type="close")
-                new_trade.set_executed_price(t_executed_price=executed_price)
-            self.update_from_trades(trades=array_new_trades, instru_info_tab=instru_info)
+                contract_id, instrument = new_trade.contract_and_instru_id
+                new_trade.executed_price = mgr_md.inquiry_price_at_date(contact=contract_id, instrument=instrument, trade_date=trade_date, price_type="close")
+            self.update_from_trades(trades=array_new_trades)
 
             # --- update with market data for realized and unrealized pnl
             self.update_realized_pnl()

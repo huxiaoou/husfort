@@ -52,17 +52,17 @@ class CInstrumentInfoTable(object):
         instrument_id = self.parse_instrument_from_contract(contract)
         return self.get_multiplier(instrument_id)
 
-    def get_minispread(self, instrument_id: str):
+    def get_mini_spread(self, instrument_id: str):
         return self.instrument_info_df.at[instrument_id, "miniSpread"]
 
     def get_precision(self, instrument_id: str):
         return self.instrument_info_df.at[instrument_id, "precision"]
 
-    def get_exchangeId(self, instrument_id: str):
+    def get_exchange_id(self, instrument_id: str):
         return self.instrument_info_df.at[instrument_id, "exchangeId"]
 
-    def get_exchangeId_eng(self, instrument_id: str):
-        exchange_id_full = self.get_exchangeId(instrument_id)
+    def get_exchange_id_eng(self, instrument_id: str):
+        exchange_id_full = self.get_exchange_id(instrument_id)
         exchange_id_eng = {
             "DCE": "DCE",
             "CZCE": "CZC",
@@ -73,8 +73,8 @@ class CInstrumentInfoTable(object):
         }[exchange_id_full]
         return exchange_id_eng
 
-    def get_exchangeId_chs(self, instrument_id: str):
-        exchange_id_full = self.get_exchangeId(instrument_id)
+    def get_exchange_id_chs(self, instrument_id: str):
+        exchange_id_full = self.get_exchange_id(instrument_id)
         exchange_id_chs = {
             "DCE": "大商所",
             "CZCE": "郑商所",
@@ -128,7 +128,7 @@ class CInstrumentInfoTable(object):
 
         if contract_type.upper() == "VANILLA":  # "MA105"
             instrument_id = self.parse_instrument_from_contract(contract)  # "MA"
-            exchange_id = self.get_exchangeId(instrument_id)  # "CZC"
+            exchange_id = self.get_exchange_id(instrument_id)  # "CZC"
             len_cid, len_instru_id = len(contract), len(instrument_id)  # len("MA105"), len("MA")
         elif contract_type.upper() == "WIND":  # "MA105.CZC"
             cid, exchange_id = contract.split(".")  # "MA105", "CZC"
@@ -159,14 +159,27 @@ class CContract(object):
     exchange: str
     contract_multiplier: int
 
+    @property
+    def contract_and_instru_id(self) -> tuple[str, str]:
+        return self.contract, self.instrument
+
     @staticmethod
     def gen_from_contract_id(contract: str, instru_info_tab: CInstrumentInfoTable) -> "CContract":
         instrument = instru_info_tab.parse_instrument_from_contract(contract)
         return CContract(
             contract=contract,
             instrument=instrument,
-            exchange=instru_info_tab.get_exchangeId(instrument),
+            exchange=instru_info_tab.get_exchange_id(instrument),
             contract_multiplier=instru_info_tab.get_multiplier(instrument),
+        )
+
+    @staticmethod
+    def gen_from_other(contract: str, other: "CContract") -> "CContract":
+        return CContract(
+            contract=contract,
+            instrument=other.instrument,
+            exchange=other.exchange,
+            contract_multiplier=other.contract_multiplier,
         )
 
 
@@ -178,6 +191,10 @@ TOperation = NewType("TypeOperation", int)
 class CPosKey(object):
     contract: CContract
     direction: TDirection
+
+    @property
+    def contract_and_instru_id(self) -> tuple[str, str]:
+        return self.contract.contract_and_instru_id
 
 
 # --- custom CONST

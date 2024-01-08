@@ -15,7 +15,7 @@ class CAttachmentText(object):
         self.attachment_path = os.path.join(attachment_dir, attachment_file)
         self.attachment_alias = alias
 
-    def to_MIME_app(self):
+    def to_mime_app(self):
         attachment_app = MIMEApplication(open(self.attachment_path, "rb").read())
         if self.attachment_alias:
             attachment_app.add_header("Content-Disposition", "attachment", filename=self.attachment_alias)
@@ -42,7 +42,7 @@ class CAgentEmail(object):
 
     def __add_attachments(self, attachments: list[CAttachmentText]):
         for attachment in attachments:
-            self.message.attach(attachment.to_MIME_app())
+            self.message.attach(attachment.to_mime_app())
         return 0
 
     def write(self, receivers: list[str], msg_subject: str, msg_body: str, attachments: list[CAttachmentText]):
