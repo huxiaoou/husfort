@@ -1,10 +1,12 @@
 import os
 import numpy as np
 import pandas as pd
-from typing import NewType
-from husfort.qsqlite import CManagerLibReader, CLibAvailableUniverse, CLibFactor
+from husfort.qsqlite import CManagerLibReader, CLibFactor
 from husfort.qcalendar import CCalendar
-from husfort.qinstruments import CInstrumentInfoTable
+from husfort.qinstruments import (CInstrumentInfoTable, CPosKey, CContract,
+                                  TDirection, TOperation,
+                                  CONST_DIRECTION_LNG, CONST_DIRECTION_SRT, CONST_OPERATION_OPN, CONST_OPERATION_CLS,
+                                  )
 
 
 # ------------------------------------------ Classes general -------------------------------------------------------------------
@@ -39,14 +41,13 @@ class CManagerMarketData(object):
         return self.md[price_type][instrument].at[trade_date, contact]
 
 
-class CManagerSignalBase(object):
-    def __init__(self, factor: str, mother_universe: list[str], available_universe_dir: str, factors_dir: str,
+class CManagerSignal(object):
+    def __init__(self, factor: str, universe: list[str], factors_dir: str,
                  mgr_md: CManagerMarketData, mgr_major: CManagerMajor):
         """
 
         :param factor:
-        :param mother_universe: list of all instruments, instrument not in this list can not be traded
-        :param available_universe_dir:
+        :param universe: list of all instruments, instrument not in this list can not be traded
         :param factors_dir:
         :param mgr_md:
         :param mgr_major:
@@ -54,150 +55,105 @@ class CManagerSignalBase(object):
         """
 
         self.factor = factor
-        self.mother_universe_set: set = set(mother_universe)
-        self.available_universe_lib: CManagerLibReader = CLibAvailableUniverse(available_universe_dir).get_lib_reader()
+        self.universe: set = set(universe)
         self.factor_lib: CManagerLibReader = CLibFactor(factor=factor, lib_save_dir=factors_dir).get_lib_reader()
         self.mgr_md: CManagerMarketData = mgr_md
         self.mgr_major: CManagerMajor = mgr_major
 
     def close_libs(self):
-        self.available_universe_lib.close()
         self.factor_lib.close()
         return 0
 
-    @staticmethod
-    def cal_weight(opt_weight_df: pd.DataFrame, weight_lbl: str):
-        """
-
-        :param opt_weight_df: factor in opt_weight_df is the weight, each element of
-                              can be negative or positive. the sum of the absolute value of
-                              each element may not equal 1.
-        :param weight_lbl:
-        :return:
-        """
-        wgt_abs_sum = opt_weight_df[weight_lbl].abs().sum()
-        opt_weight_df[weight_lbl] = opt_weight_df[weight_lbl] / wgt_abs_sum if wgt_abs_sum > 1e-4 else 0
-        return opt_weight_df
-
-    def cal_new_pos(self, sig_date: str, exe_date: str, verbose: bool) -> pd.DataFrame:
-        # --- load available universe
-        available_universe_df = self.available_universe_lib.read_by_date(sig_date, value_columns=["instrument"])
-        available_universe_set = set(available_universe_df["instrument"])
-
+    def cal_position_header(self, sig_date: str) -> pd.DataFrame:
         # --- load factors at signal date
-        factor_df = self.factor_lib.read_by_date(sig_date, value_columns=["instrument", "value"]).rename(
-            mapper={"value": self.factor}, axis=1).set_index("instrument")
-        factor_universe_set = set(factor_df.index)
+        factor_df = self.factor_lib.read_by_date(sig_date, value_columns=["instrument", "value"])
+        factor_df = factor_df.rename(mapper={"value": self.factor}, axis=1).set_index("instrument")
 
         # --- selected/optimized universe
-        opt_universe = list(self.mother_universe_set.intersection(available_universe_set).intersection(factor_universe_set))
-        opt_weight_df = factor_df.loc[opt_universe]
+        header_universe = [_ for _ in self.universe if _ in factor_df.index]
+        header_weight_df: pd.DataFrame = factor_df.loc[header_universe]
 
-        if len(opt_weight_df) > 0:
-            opt_weight_df = opt_weight_df.reset_index()
-            opt_weight_df = opt_weight_df.sort_values(by=[self.factor, "instrument"], ascending=[False, True])
-            opt_weight_df = self.cal_weight(opt_weight_df=opt_weight_df, weight_lbl=self.factor)
-
-            # --- reformat
-            opt_weight_df["contract"] = opt_weight_df["instrument"].map(lambda z: self.mgr_major.inquiry_major_contract(z, exe_date))
-            opt_weight_df["price"] = opt_weight_df[["instrument", "contract"]].apply(
-                lambda z: self.mgr_md.inquiry_price_at_date(z["contract"], z["instrument"], exe_date), axis=1)
-            opt_weight_df["direction"] = opt_weight_df["opt"].map(lambda z: int(np.sign(z)))
-            opt_weight_df["weight"] = opt_weight_df["opt"].abs()
-            opt_weight_df = opt_weight_df.loc[opt_weight_df["weight"] > 0]
-
-            if (len(opt_weight_df) < 2) and verbose:
-                print("Warning! Not enough instruments in universe at sig_date = {}, exe_date = {}".format(sig_date, exe_date))
-                print(available_universe_df)
-                print(factor_df)
-
-            return opt_weight_df[["contract", "price", "direction", "weight"]]
-        else:
+        if header_weight_df.empty:
             return pd.DataFrame(data=None, columns=["contract", "price", "direction", "weight"])
+        else:
+            header_weight_df.reset_index(inplace=True)  # columns = ["instrument", "factor", self.factor]
+            header_weight_df.sort_values(by=[self.factor, "instrument"], ascending=[False, True], inplace=True)
+            header_weight_df["contract"] = header_weight_df["instrument"].map(lambda z: self.mgr_major.inquiry_major_contract(z, sig_date))
+            header_weight_df["price"] = header_weight_df[["instrument", "contract"]].apply(
+                lambda z: self.mgr_md.inquiry_price_at_date(z["contract"], z["instrument"], sig_date), axis=1)
+            header_weight_df["direction"] = header_weight_df[self.factor].map(lambda z: int(np.sign(z)))
+            header_weight_df["weight"] = header_weight_df[self.factor].abs()
+            return header_weight_df[["contract", "price", "direction", "weight"]]
 
 
 # ------------------------------------------ Classes about trades -------------------------------------------------------------------
-# --- custom type definition
-TypeContract = NewType("TypeContract", str)
-TypeDirection = NewType("TypeDirection", int)
-TypePositionKey = NewType("TypeKey", tuple[TypeContract, TypeDirection])
-TypeOperation = NewType("TypeOperation", int)
-
-# --- custom CONST
-CONST_DIRECTION_LONG: TypeDirection = TypeDirection(1)
-CONST_DIRECTION_SHORT: TypeDirection = TypeDirection(-1)
-CONST_OPERATION_OPEN: TypeOperation = TypeOperation(1)
-CONST_OPERATION_CLOSE: TypeOperation = TypeOperation(-1)
-
-
-# --- Class: Trade
 class CTrade(object):
-    def __init__(self, contract: TypeContract | str, direction: TypeDirection, operation: TypeOperation, quantity: int, instrument_id: str,
-                 contract_multiplier: int):
+    def __init__(self, pos_key: CPosKey, operation: TOperation, quantity: int):
         """
 
-        :param contract: basically, trades are calculated from positions, so all the information can pe provided by positions, with only one exception : executed price
-        :param direction:
+        :param pos_key
         :param operation:
         :param quantity:
-        :param instrument_id:
-        :param contract_multiplier:
         """
-        self.m_contract: TypeContract = contract
-        self.m_direction: TypeDirection = direction
-        self.m_key: TypePositionKey = TypePositionKey((contract, direction))
+        self._pos_key = pos_key
+        self._operation: TOperation = operation
+        self._quantity: int = quantity
+        self._executed_price: float = 0
 
-        self.m_instrument_id: str = instrument_id
-        self.m_contract_multiplier: int = contract_multiplier
+    @property
+    def pos_key(self) -> CPosKey:
+        return self._pos_key
 
-        self.m_operation: TypeOperation = operation
-        self.m_quantity: int = quantity
-        self.m_executed_price: float = 0
+    @property
+    def trade_id(self) -> tuple[str, TDirection]:
+        return self._pos_key.contract.contract, self._pos_key.direction
 
-    def get_key(self) -> TypePositionKey:
-        return self.m_key
+    @property
+    def execution(self) -> tuple[TOperation, int, float]:
+        return self._operation, self._quantity, self._executed_price
 
-    def get_tuple_trade_id(self) -> tuple[str, str]:
-        return self.m_contract, self.m_instrument_id
+    @property
+    def operation_is_opn(self) -> bool:
+        return self._operation == CONST_OPERATION_OPN
 
-    def get_tuple_execution(self) -> tuple[TypeOperation, int, float]:
-        return self.m_operation, self.m_quantity, self.m_executed_price
+    @property
+    def operation_is_cls(self) -> bool:
+        return self._operation == CONST_OPERATION_CLS
 
-    def operation_is(self, t_operation: TypeOperation) -> bool:
-        return self.m_operation == t_operation
+    @property
+    def executed_price(self) -> float:
+        return self._executed_price
 
-    def set_executed_price(self, t_executed_price: float):
-        self.m_executed_price = t_executed_price
+    @executed_price.setter
+    def executed_price(self, executed_price: float):
+        self._executed_price = executed_price
 
 
 # --- Class: Position
 class CPosition(object):
-    def __init__(self, contract: TypeContract, direction: TypeDirection, instru_info: CInstrumentInfoTable):
-        self.contract: TypeContract = contract
-        self.direction: TypeDirection = direction
-        self.key: TypePositionKey = TypePositionKey((contract, direction))
-        self.instrument_id: str = CInstrumentInfoTable.parse_instrument_from_contract(self.contract)
-        self.contract_multiplier: int = instru_info.get_multiplier(instrument_id=self.instrument_id)
-        self.quantity: int = 0
+    def __init__(self, pos_key: CPosKey):
+        self._pos_key: CPosKey = pos_key
+        self._quantity: int = 0
 
-    def cal_quantity(self, t_price: float, t_allocated_mkt_val: float) -> 0:
-        self.quantity = int(np.round(t_allocated_mkt_val / t_price / self.contract_multiplier))
+    def cal_quantity(self, price: float, allocated_mkt_val: float) -> 0:
+        self._quantity = int(np.round(allocated_mkt_val / price / self._pos_key.contract.contract_multiplier))
         return 0
 
-    def get_key(self) -> TypePositionKey:
-        return self.key
+    @property
+    def pos_key(self) -> CPosKey:
+        return self._pos_key
 
-    def get_tuple_pos_id(self) -> tuple[str, str]:
-        return self.contract, self.instrument_id
+    @property
+    def pos_id(self) -> tuple[str, str]:
+        return self.pos_key.contract.contract, self.pos_key.contract.instrument
 
-    def get_quantity(self):
-        return self.quantity
+    @property
+    def quantity(self) -> int:
+        return self._quantity
 
-    def get_contract_multiplier(self) -> int:
-        return self.contract_multiplier
-
+    @property
     def is_empty(self) -> bool:
-        return self.quantity == 0
+        return self._quantity == 0
 
     def cal_trade_from_other_pos(self, other: "CPosition") -> CTrade | None:
         """
@@ -208,68 +164,56 @@ class CPosition(object):
         new_trade: CTrade | None = None
         delta_quantity: int = other.quantity - self.quantity
         if delta_quantity > 0:
-            new_trade: CTrade = CTrade(
-                contract=self.contract, direction=self.direction, operation=CONST_OPERATION_OPEN, quantity=delta_quantity,
-                instrument_id=self.instrument_id, contract_multiplier=self.contract_multiplier
-            )
+            new_trade: CTrade = CTrade(pos_key=self.pos_key, operation=CONST_OPERATION_OPN, quantity=delta_quantity)
         elif delta_quantity < 0:
-            new_trade: CTrade = CTrade(
-                contract=self.contract, direction=self.direction, operation=CONST_OPERATION_CLOSE, quantity=-delta_quantity,
-                instrument_id=self.instrument_id, contract_multiplier=self.contract_multiplier
-            )
+            new_trade: CTrade = CTrade(pos_key=self.pos_key, operation=CONST_OPERATION_CLS, quantity=-delta_quantity)
         return new_trade
 
     def open(self):
-        # Open new position
-        new_trade: CTrade = CTrade(
-            contract=self.contract, direction=self.direction, operation=CONST_OPERATION_OPEN, quantity=self.quantity,
-            instrument_id=self.instrument_id, contract_multiplier=self.contract_multiplier
-        )
+        new_trade: CTrade = CTrade(pos_key=self.pos_key, operation=CONST_OPERATION_OPN, quantity=self.quantity)
         return new_trade
 
     def close(self):
-        # Close old position
-        new_trade: CTrade = CTrade(
-            contract=self.contract, direction=self.direction, operation=CONST_OPERATION_CLOSE, quantity=self.quantity,
-            instrument_id=self.instrument_id, contract_multiplier=self.contract_multiplier
-        )
+        new_trade: CTrade = CTrade(pos_key=self.pos_key, operation=CONST_OPERATION_CLS, quantity=self.quantity)
         return new_trade
 
     def to_dict(self) -> dict:
         return {
-            "contact": self.contract,
-            "direction": self.direction,
+            "contact": self.pos_key.contract.contract,
+            "direction": self.pos_key.direction,
             "quantity": self.quantity,
-            "contract_multiplier": self.contract_multiplier,
+            "contract_multiplier": self.pos_key.contract.contract_multiplier,
         }
 
 
 # --- Class: PositionPlus
 class CPositionPlus(CPosition):
-    def __init__(self, contract: TypeContract, direction: TypeDirection, instru_info: CInstrumentInfoTable, t_cost_rate: float):
-        super().__init__(contract, direction, instru_info)
+    def __init__(self, pos_key: CPosKey, cost_rate: float):
+        super().__init__(pos_key=pos_key)
 
         self.cost_price: float = 0
         self.last_price: float = 0
         self.unrealized_pnl: float = 0
-        self.cost_rate: float = t_cost_rate
+        self.cost_rate: float = cost_rate
 
     def update_from_trade(self, trade: CTrade) -> dict:
-        operation, quantity, executed_price = trade.get_tuple_execution()
-        cost = executed_price * quantity * self.contract_multiplier * self.cost_rate
-
+        operation, quantity, executed_price = trade.execution
+        cost = executed_price * quantity * self.pos_key.contract.contract_multiplier * self.cost_rate
         realized_pnl = 0
-        if operation == CONST_OPERATION_OPEN:
-            amt_new = self.cost_price * self.quantity + executed_price * quantity
-            self.quantity += quantity
-            self.cost_price = amt_new / self.quantity
-        if operation == CONST_OPERATION_CLOSE:
-            realized_pnl = (executed_price - self.cost_price) * self.direction * self.contract_multiplier * quantity
-            self.quantity -= quantity
+        if operation == CONST_OPERATION_OPN:
+            amt_new = self.cost_price * self._quantity + executed_price * quantity
+            self._quantity += quantity
+            self.cost_price = amt_new / self._quantity
+        elif operation == CONST_OPERATION_CLS:
+            realized_pnl = (executed_price - self.cost_price) * self.pos_key.direction * self.pos_key.contract.contract_multiplier * quantity
+            self._quantity -= quantity
+        else:
+            print(f"operation = {operation} is illegal")
+            raise ValueError
 
         return {
-            "contract": self.contract,
-            "direction": self.direction,
+            "contract": self.pos_key.contract.contract,
+            "direction": self.pos_key.direction,
             "operation": operation,
             "quantity": quantity,
             "price": executed_price,
@@ -279,11 +223,11 @@ class CPositionPlus(CPosition):
 
     def update_from_market_data(self, price: float) -> float:
         self.last_price = price
-        self.unrealized_pnl = (self.last_price - self.cost_price) * self.direction * self.contract_multiplier * self.quantity
+        self.unrealized_pnl = (self.last_price - self.cost_price) * self.pos_key.direction * self.pos_key.contract.contract_multiplier * self._quantity
         return self.unrealized_pnl
 
     def update_from_last(self) -> float:
-        self.unrealized_pnl = (self.last_price - self.cost_price) * self.direction * self.contract_multiplier * self.quantity
+        self.unrealized_pnl = (self.last_price - self.cost_price) * self.pos_key.direction * self.pos_key.contract.contract_multiplier * self._quantity
         return self.unrealized_pnl
 
     def to_dict(self) -> dict:
@@ -348,8 +292,8 @@ class CPortfolio(object):
         tot_allocated_amt = self.nav / (1 + self.cost_reservation)
         for contract, direction, price, weight in zip(t_new_pos_df["contract"], t_new_pos_df["direction"], t_new_pos_df["price"], t_new_pos_df["weight"]):
             tgt_pos = CPosition(contract=contract, direction=direction, instru_info=t_instru_info)
-            tgt_pos.cal_quantity(t_price=price, t_allocated_mkt_val=tot_allocated_amt * weight)
-            key, qty = tgt_pos.get_key(), tgt_pos.get_quantity()
+            tgt_pos.cal_quantity(price=price, allocated_mkt_val=tot_allocated_amt * weight)
+            key, qty = tgt_pos.get_key(), tgt_pos.quantity()
             if qty > 0:
                 mgr_new_pos[key] = tgt_pos
         return mgr_new_pos
@@ -381,7 +325,7 @@ class CPortfolio(object):
                 trade_close_old = old_pos.close()
                 trade_open_new = CTrade(
                     contract=new_contract, direction=old_pos.get_key()[1],
-                    operation=CONST_OPERATION_OPEN, quantity=old_pos.get_quantity(),
+                    operation=CONST_OPERATION_OPN, quantity=old_pos.quantity(),
                     instrument_id=instrument_id, contract_multiplier=old_pos.get_contract_multiplier()
                 )
                 trades_list.append(trade_close_old)
@@ -395,7 +339,7 @@ class CPortfolio(object):
             if trade_key not in self.manager_pos:
                 self.manager_pos[trade_key] = CPositionPlus(
                     contract=trade_key[0], direction=trade_key[1],
-                    instru_info=instru_info_tab, t_cost_rate=self.cost_rate
+                    instru_info=instru_info_tab, cost_rate=self.cost_rate
                 )
             trade_result = self.manager_pos[trade_key].update_from_trade(trade=trade)
             self.realized_pnl_daily_details.append(trade_result)
@@ -416,9 +360,9 @@ class CPortfolio(object):
     def update_unrealized_pnl(self, mgr_md: CManagerMarketData) -> int:
         self.unrealized_pnl = 0
         for pos in self.manager_pos.values():
-            contract, instrument_id = pos.get_tuple_pos_id()
+            contract, instrument = pos.pos_id
             last_price = mgr_md.inquiry_price_at_date(
-                contact=contract, instrument=instrument_id, trade_date=self.update_date,
+                contact=contract, instrument=instrument, trade_date=self.update_date,
                 price_type="close"
             )  # always use close to estimate the unrealized pnl
             if np.isnan(last_price):
@@ -481,7 +425,7 @@ class CPortfolio(object):
 
     def main_loop(self, simu_bgn_date: str, simu_stp_date: str, start_delay: int, hold_period_n: int,
                   trade_calendar: CCalendar, instru_info: CInstrumentInfoTable,
-                  mgr_signal: CManagerSignalBase, mgr_md: CManagerMarketData, mgr_major: CManagerMajor):
+                  mgr_signal: CManagerSignal, mgr_md: CManagerMarketData, mgr_major: CManagerMajor):
         iter_trade_dates_list = trade_calendar.get_iter_list(bgn_date=simu_bgn_date, stp_date=simu_stp_date)
         for ti, trade_date in enumerate(iter_trade_dates_list):
             # --- initialize
@@ -489,8 +433,8 @@ class CPortfolio(object):
             self.initialize_daily(trade_date=trade_date)
 
             # --- check signal and cal new positions
-            if (ti - start_delay) % hold_period_n == 0:  # ti is a execution date
-                new_pos_df = mgr_signal.cal_new_pos(sig_date=signal_date, exe_date=trade_date, verbose=self.verbose)
+            if (ti - start_delay) % hold_period_n == 0:  # ti is an execution date
+                new_pos_df = mgr_signal.cal_position_header(sig_date=signal_date)
                 mgr_new_pos: dict[TypePositionKey, CPosition] = self.cal_target_position(t_new_pos_df=new_pos_df, t_instru_info=instru_info)
                 array_new_trades = self.cal_trades_for_signal(mgr_new_pos=mgr_new_pos)
                 # no major-shift check is necessary
@@ -500,7 +444,7 @@ class CPortfolio(object):
                 array_new_trades = self.cal_trades_for_major(mgr_major=mgr_major)  # use this function to check for major-shift
 
             for new_trade in array_new_trades:
-                contract, instrument_id = new_trade.get_tuple_trade_id()
+                contract, instrument_id = new_trade.trade_id()
                 executed_price = mgr_md.inquiry_price_at_date(contact=contract, instrument=instrument_id, trade_date=trade_date, price_type="close")
                 new_trade.set_executed_price(t_executed_price=executed_price)
             self.update_from_trades(trades=array_new_trades, instru_info_tab=instru_info)

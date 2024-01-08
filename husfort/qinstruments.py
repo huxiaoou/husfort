@@ -2,6 +2,8 @@ import os
 import re
 import numpy as np
 import pandas as pd
+from typing import NewType
+from dataclasses import dataclass
 
 
 class CInstrumentInfoTable(object):
@@ -148,3 +150,44 @@ class CInstrumentInfoTable(object):
             # if not, decimal year +=1
             td += 1
         return contract[0:len_instru_id] + str(td) + contract[len_instru_id:]
+
+
+@dataclass(frozen=True)
+class CContract(object):
+    contract: str
+    instrument: str
+    exchange: str
+    contract_multiplier: int
+
+    @staticmethod
+    def gen_from_contract_id(contract: str, instru_info_tab: CInstrumentInfoTable) -> "CContract":
+        instrument = instru_info_tab.parse_instrument_from_contract(contract)
+        return CContract(
+            contract=contract,
+            instrument=instrument,
+            exchange=instru_info_tab.get_exchangeId(instrument),
+            contract_multiplier=instru_info_tab.get_multiplier(instrument),
+        )
+
+
+TDirection = NewType("TypeDirection", int)
+TOperation = NewType("TypeOperation", int)
+
+
+@dataclass(frozen=True)
+class CPosKey(object):
+    contract: CContract
+    direction: TDirection
+
+
+# --- custom CONST
+CONST_DIRECTION_LNG: TDirection = TDirection(1)
+CONST_DIRECTION_SRT: TDirection = TDirection(-1)
+CONST_OPERATION_OPN: TOperation = TOperation(1)
+CONST_OPERATION_CLS: TOperation = TOperation(-1)
+
+if __name__ == "__main__":
+    c0 = CContract("a", "b", "c", 100)
+    c1 = CContract("a", "b", "c", 100)
+    if c0 == c1:
+        print(f"{c0} = {c1}")

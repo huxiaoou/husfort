@@ -4,16 +4,6 @@ import pandas as pd
 from dataclasses import dataclass, field
 
 
-def move_date_string(trade_date: str, move_days: int = 1) -> str:
-    """
-
-    :param trade_date:
-    :param move_days: >0, to the future; <0, to the past
-    :return:
-    """
-    return (dt.datetime.strptime(trade_date, "%Y%m%d") + dt.timedelta(days=move_days)).strftime("%Y%m%d")
-
-
 class CCalendar(object):
     def __init__(self, calendar_path: os.path, header: int = None):
         if header:
@@ -32,11 +22,11 @@ class CCalendar(object):
 
     @property
     def trade_dates(self) -> list[str]:
-        return self.trade_dates
+        return self.__trade_dates
 
     def get_iter_list(self, bgn_date: str, stp_date: str, ascending: bool = True):
         res = []
-        for t_date in self.trade_dates:
+        for t_date in self.__trade_dates:
             if t_date < bgn_date:
                 continue
             if t_date >= stp_date:
@@ -45,10 +35,10 @@ class CCalendar(object):
         return res if ascending else sorted(res, reverse=True)
 
     def get_sn(self, base_date: str):
-        return self.trade_dates.index(base_date)
+        return self.__trade_dates.index(base_date)
 
     def get_date(self, sn: int):
-        return self.trade_dates[sn]
+        return self.__trade_dates[sn]
 
     def get_next_date(self, this_date: str, shift: int = 1):
         """
@@ -60,7 +50,17 @@ class CCalendar(object):
 
         this_sn = self.get_sn(this_date)
         next_sn = this_sn + shift
-        return self.trade_dates[next_sn]
+        return self.__trade_dates[next_sn]
+
+    @staticmethod
+    def move_date_string(trade_date: str, move_days: int = 1) -> str:
+        """
+
+        :param trade_date:
+        :param move_days: >0, to the future; <0, to the past
+        :return:
+        """
+        return (dt.datetime.strptime(trade_date, "%Y%m%d") + dt.timedelta(days=move_days)).strftime("%Y%m%d")
 
 
 CONST_TS1, CONST_TS2 = "TS1", "TS2"
