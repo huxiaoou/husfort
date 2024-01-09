@@ -159,7 +159,6 @@ class CContract(object):
     exchange: str
     contract_multiplier: int
 
-    @property
     def contract_and_instru_id(self) -> tuple[str, str]:
         return self.contract, self.instrument
 
@@ -175,16 +174,24 @@ class CContract(object):
 
     @staticmethod
     def gen_from_other(contract: str, other: "CContract") -> "CContract":
-        return CContract(
-            contract=contract,
-            instrument=other.instrument,
-            exchange=other.exchange,
-            contract_multiplier=other.contract_multiplier,
-        )
+        if isinstance(other, CContract):
+            return CContract(
+                contract=contract,
+                instrument=other.instrument,
+                exchange=other.exchange,
+                contract_multiplier=other.contract_multiplier,
+            )
+        else:
+            print(f"{other} is not an instance of CContract")
+            raise TypeError
 
 
 TDirection = NewType("TypeDirection", int)
 TOperation = NewType("TypeOperation", int)
+CONST_DIRECTION_LNG: TDirection = TDirection(1)
+CONST_DIRECTION_SRT: TDirection = TDirection(-1)
+CONST_OPERATION_OPN: TOperation = TOperation(1)
+CONST_OPERATION_CLS: TOperation = TOperation(-1)
 
 
 @dataclass(frozen=True)
@@ -192,16 +199,6 @@ class CPosKey(object):
     contract: CContract
     direction: TDirection
 
-    @property
-    def contract_and_instru_id(self) -> tuple[str, str]:
-        return self.contract.contract_and_instru_id
-
-
-# --- custom CONST
-CONST_DIRECTION_LNG: TDirection = TDirection(1)
-CONST_DIRECTION_SRT: TDirection = TDirection(-1)
-CONST_OPERATION_OPN: TOperation = TOperation(1)
-CONST_OPERATION_CLS: TOperation = TOperation(-1)
 
 if __name__ == "__main__":
     c0 = CContract("a", "b", "c", 100)

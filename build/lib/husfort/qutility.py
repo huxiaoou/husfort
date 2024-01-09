@@ -29,6 +29,16 @@ def check_and_makedirs(dir_path: str):
     return 0
 
 
+def hide_cursor():
+    print("\033[?25l", end="")
+    return 0
+
+
+def show_cursor():
+    print("\033[?25h", end="")
+    return 0
+
+
 if __name__ == "__main__":
     test_string = "hello, world"
     print(SFR(test_string))
