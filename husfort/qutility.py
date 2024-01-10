@@ -37,14 +37,3 @@ def hide_cursor():
 def show_cursor():
     print("\033[?25h", end="")
     return 0
-
-
-if __name__ == "__main__":
-    test_string = "hello, world"
-    print(SFR(test_string))
-    print(SFG(test_string))
-    print(SFY(test_string))
-    print(SFB(test_string))
-    print(SFM(test_string))
-    print(SFC(test_string))
-    print(SFW(test_string))

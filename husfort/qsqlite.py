@@ -48,7 +48,8 @@ class CMangerLibBase(object):
         return 0
 
     def is_table_existence(self, table: CTable) -> bool:
-        cmd_sql_check_existence = f"SELECT count(name) FROM sqlite_master WHERE type='table' AND name='{table.table_name}'"
+        cmd_sql_check_existence = (f"SELECT count(name) FROM sqlite_master"
+                                   f" WHERE type='table' AND name='{table.table_name}'")
         table_counts = self.cursor.execute(cmd_sql_check_existence).fetchall()[0][0]
         return table_counts > 0
 
@@ -100,20 +101,26 @@ class CManagerLibReader(CMangerLibBase):
 
     def read_by_date(self, date: str, value_columns: list[str], using_default_table: bool = True, table_name: str = ""):
         return self.read_by_conditions(conditions=[("trade_date", "=", date)],
-                                       value_columns=value_columns, using_default_table=using_default_table, table_name=table_name)
+                                       value_columns=value_columns, using_default_table=using_default_table,
+                                       table_name=table_name)
 
-    def read_by_range(self, bgn_date: str, stp_date: str, value_columns: list[str], using_default_table: bool = True, table_name: str = ""):
+    def read_by_range(self, bgn_date: str, stp_date: str, value_columns: list[str], using_default_table: bool = True,
+                      table_name: str = ""):
         return self.read_by_conditions(conditions=[("trade_date", ">=", bgn_date), ("trade_date", "<", stp_date)],
-                                       value_columns=value_columns, using_default_table=using_default_table, table_name=table_name)
+                                       value_columns=value_columns, using_default_table=using_default_table,
+                                       table_name=table_name)
 
-    def read_by_instrument(self, instrument: str, value_columns: list[str], using_default_table: bool = True, table_name: str = ""):
+    def read_by_instrument(self, instrument: str, value_columns: list[str], using_default_table: bool = True,
+                           table_name: str = ""):
         return self.read_by_conditions(conditions=[("instrument", "=", instrument)],
-                                       value_columns=value_columns, using_default_table=using_default_table, table_name=table_name)
+                                       value_columns=value_columns, using_default_table=using_default_table,
+                                       table_name=table_name)
 
     def read_by_instrument_range(self, bgn_date: str, stp_date: str, instrument: str,
                                  value_columns: list[str], using_default_table: bool = True, table_name: str = ""):
-        return self.read_by_conditions(conditions=[("trade_date", ">=", bgn_date), ("trade_date", "<", stp_date), ("instrument", "=", instrument)],
-                                       value_columns=value_columns, using_default_table=using_default_table, table_name=table_name)
+        return self.read_by_conditions(
+            conditions=[("trade_date", ">=", bgn_date), ("trade_date", "<", stp_date), ("instrument", "=", instrument)],
+            value_columns=value_columns, using_default_table=using_default_table, table_name=table_name)
 
     def check_continuity(self, append_date: str, calendar: CCalendar,
                          using_default_table: bool = True, table_name: str = "") -> int:
@@ -129,12 +136,14 @@ class CManagerLibReader(CMangerLibBase):
             return 0
         elif expected_next_date < append_date:
             print(f"... [INF] Warning! Last date of {SFR(tgt_table_name)} is {last_date}")
-            print(f"... [INF] And expected next date should be {SFR(expected_next_date)}, but input date = {append_date}.")
+            print(f"... [INF] And expected next date should be {SFR(expected_next_date)}")
+            print(f"... [INF] But input date = {append_date}")
             print(f"... [INF] Some days may be {SFY('omitted')}")
             return 1
         else:  # expected_next_date > append_date
             print(f"... [INF] Warning! Last date of {SFR(tgt_table_name)} is {last_date}")
-            print(f"... [INF] And expected next date should be {SFR(expected_next_date)}, but input date = {append_date}.")
+            print(f"... [INF] And expected next date should be {SFR(expected_next_date)}")
+            print(f"... [INF] But input date = {append_date}.")
             print(f"... [INF] Some days may be {SFY('overlapped')}")
             return 2
 
@@ -161,11 +170,13 @@ class CManagerLibReader(CMangerLibBase):
         if expected_next_sec == append_sec:
             return 0
         elif expected_next_sec < append_sec:
-            print(f"... [INF] Expected next section should be {SFR(expected_next_sec.secId)}, but input section = {append_sec.secId}.")
+            print(f"... [INF] Expected next section should be {SFR(expected_next_sec.secId)}")
+            print(f"... [INF] But input section = {append_sec.secId}.")
             print(f"... [INF] Some sections may be {SFY('omitted')}")
             return 1
         else:  # expected_next_sec > append_sec:
-            print(f"... [INF] Expected next section should be {SFR(expected_next_sec.secId)}, but input section = {append_sec.secId}.")
+            print(f"... [INF] Expected next section should be {SFR(expected_next_sec.secId)}")
+            print(f"... [INF] But input section = {append_sec.secId}.")
             print(f"... [INF] Some sections may be {SFY('overlapped')}")
             return 2
 
@@ -175,7 +186,8 @@ class CManagerLibWriter(CManagerLibReader):
         self.cursor.execute(f"DROP TABLE {table_name}")
         return 0
 
-    def initialize_table(self, table: CTable, remove_existence: bool = True, set_as_default: bool = True, verbose: bool = False):
+    def initialize_table(self, table: CTable, remove_existence: bool = True, set_as_default: bool = True,
+                         verbose: bool = False):
         """
 
         :param table:
@@ -199,7 +211,8 @@ class CManagerLibWriter(CManagerLibReader):
         str_value_columns = [f"{k} {v}" for k, v in table.value_columns.items()]
         str_all_columns = ", ".join(str_primary_keys + str_value_columns)
         str_set_primary = f"PRIMARY KEY({', '.join(table.primary_keys)})"
-        cmd_sql_for_create_table = f"CREATE TABLE IF NOT EXISTS {table.table_name}({str_all_columns}, {str_set_primary})"
+        cmd_sql_for_create_table = (f"CREATE TABLE IF NOT EXISTS"
+                                    f"{table.table_name}({str_all_columns}, {str_set_primary})")
         self.cursor.execute(cmd_sql_for_create_table)
         if set_as_default:
             self.set_default(default_table_name=table.table_name)
@@ -207,12 +220,14 @@ class CManagerLibWriter(CManagerLibReader):
             print(f"... Table {table.table_name} in {self.db_name} is initialized")
         return 0
 
-    def initialize_tables(self, tables: list[CTable], remove_existence: bool = True, default_table_name: str = "", verbose: bool = False):
+    def initialize_tables(self, tables: list[CTable], remove_existence: bool = True, default_table_name: str = "",
+                          verbose: bool = False):
         for table in tables:
             self.initialize_table(table, remove_existence, table.table_name == default_table_name, verbose)
         return 0
 
-    def update(self, update_df: pd.DataFrame, using_index: bool = False, using_default_table: bool = True, table_name: str = ""):
+    def update(self, update_df: pd.DataFrame, using_index: bool = False, using_default_table: bool = True,
+               table_name: str = ""):
         """
 
         :param update_df: new data, column orders must be the same as the columns orders of the new target table
@@ -227,7 +242,8 @@ class CManagerLibWriter(CManagerLibReader):
             self.cursor.execute(cmd_sql_update, data_cell)
         return 0
 
-    def delete_by_conditions(self, conditions: list[tuple[str, str, str]], using_default_table: bool = True, table_name: str = ""):
+    def delete_by_conditions(self, conditions: list[tuple[str, str, str]], using_default_table: bool = True,
+                             table_name: str = ""):
         """
 
         :param conditions: a list of tuple, like:[
@@ -247,12 +263,14 @@ class CManagerLibWriter(CManagerLibReader):
         return 0
 
     def delete_by_date(self, date: str, using_default_table: bool = True, table_name: str = ""):
-        self.delete_by_conditions(conditions=[("trade_date", "=", date)], using_default_table=using_default_table, table_name=table_name)
+        self.delete_by_conditions(conditions=[("trade_date", "=", date)], using_default_table=using_default_table,
+                                  table_name=table_name)
         return 0
 
     def delete_by_section(self, section: CSection, using_default_table: bool = True, table_name: str = ""):
-        self.delete_by_conditions(conditions=[("trade_date", "=", section.trade_date), ("section", "=", section.section)],
-                                  using_default_table=using_default_table, table_name=table_name)
+        self.delete_by_conditions(
+            conditions=[("trade_date", "=", section.trade_date), ("section", "=", section.section)],
+            using_default_table=using_default_table, table_name=table_name)
         return 0
 
 

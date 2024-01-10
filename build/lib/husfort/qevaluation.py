@@ -24,7 +24,8 @@ class CNAV(object):
         :param input_type: "NAV" or "RET"
         :param annual_rf_rate: annualized risk-free rate, must NOT be multiplied by the return scale.
                                the class will do the conversion when initialized
-        :param annual_factor: if the return series means a return with hold period = T trading days, this value should by 250/T
+        :param annual_factor: if the return series means a return with hold period = T trading days,
+                              this value should by 250/T
                                                   |  T | annual factor |               |
                                 daily     returns |  1 |      250      | default value |
                                 weekly    returns |  5 |       50      |               |

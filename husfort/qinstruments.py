@@ -7,7 +7,8 @@ from dataclasses import dataclass
 
 
 class CInstrumentInfoTable(object):
-    def __init__(self, instru_info_path: os.path, index_label: str = "instrumentId", file_type: str = "EXCEL", sheet_name: str = "InstrumentInfo"):
+    def __init__(self, instru_info_path: os.path, index_label: str = "instrumentId",
+                 file_type: str = "EXCEL", sheet_name: str = "InstrumentInfo"):
         """
 
         :param instru_info_path: InstrumentInfo file path, could be a txt(csv) or xlsx
@@ -17,9 +18,13 @@ class CInstrumentInfoTable(object):
         """
         if file_type.upper() == "EXCEL":
             self.instrument_info_df = pd.read_excel(instru_info_path, sheet_name=sheet_name).set_index(index_label)
-        else:
+        elif file_type.upper() == "CSV":
             self.instrument_info_df = pd.read_csv(instru_info_path).set_index(index_label)
-        self.instrument_info_df["precision"] = self.instrument_info_df["miniSpread"].map(lambda z: max(int(-np.floor(np.log10(z))), 0))
+        else:
+            print(f"file type = {file_type} is illegal")
+            raise ValueError
+        self.instrument_info_df["precision"] = self.instrument_info_df["miniSpread"].map(
+            lambda z: max(int(-np.floor(np.log10(z))), 0))
 
     def get_universe(self, code_format: str = "wind") -> list[str]:
         """

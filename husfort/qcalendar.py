@@ -161,7 +161,8 @@ class CCalendarSection(object):
         res = [sec for sec in self.sections if sec.trade_date == tgt_date]
         return (True, res) if res else (False, res)
 
-    def parse_section(self, using_now: bool, bgn_sec_id: str, stp_sec_id: str) -> tuple[bool, tuple[CSection, CSection]]:
+    def parse_section(self, using_now: bool, bgn_sec_id: str, stp_sec_id: str) \
+            -> tuple[bool, tuple[CSection, CSection]]:
         if using_now:
             tp = dt.datetime.now().strftime("%Y%m%d %H:%M:%S.%f")
             _, b = self.match(tp)

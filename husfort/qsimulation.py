@@ -4,39 +4,10 @@ import pandas as pd
 from husfort.qsqlite import CManagerLibReader, CLibFactor, CLibAvailableUniverse
 from husfort.qcalendar import CCalendar
 from husfort.qinstruments import (CInstrumentInfoTable, CPosKey, CContract,
-                                  TOperation, CONST_DIRECTION_LNG, CONST_DIRECTION_SRT, CONST_OPERATION_OPN, CONST_OPERATION_CLS)
+                                  TOperation, CONST_DIRECTION_LNG, CONST_DIRECTION_SRT, CONST_OPERATION_OPN,
+                                  CONST_OPERATION_CLS)
 
-
-# ------------------------------------------ Classes general -------------------------------------------------------------------
-class CManagerMajor(object):
-    def __init__(self, universe: list[str], major_minor_dir: str, major_minor_lib_name: str = "major_minor.db"):
-        src_db_reader = CManagerLibReader(major_minor_dir, major_minor_lib_name)
-        self.m_major: dict[str, pd.DataFrame] = {}
-        for instrument in universe:
-            instrument_major_data_df = src_db_reader.read(
-                value_columns=["trade_date", "n_contract"],
-                using_default_table=False,
-                table_name=instrument.replace(".", "_"))
-            self.m_major[instrument] = instrument_major_data_df.set_index("trade_date")
-        src_db_reader.close()
-
-    def inquiry_major_contract(self, instrument: str, trade_date: str) -> str:
-        return self.m_major[instrument].at[trade_date, "n_contract"]
-
-
-class CManagerMarketData(object):
-    def __init__(self, universe: list[str], market_data_dir: str, market_data_file_name_tmpl: str = "{}.md.{}.csv.gz",
-                 price_types: tuple[str] = ("open", "close", "settle")):
-        self.md: dict[str, dict[str, pd.DataFrame]] = {p: {} for p in price_types}
-        for prc_type in self.md:
-            for instrument_id in universe:
-                instrument_md_file = market_data_file_name_tmpl.format(instrument_id, prc_type)
-                instrument_md_path = os.path.join(market_data_dir, instrument_md_file)
-                instrument_md_df = pd.read_csv(instrument_md_path, dtype={"trade_date": str}).set_index("trade_date")
-                self.md[prc_type][instrument_id] = instrument_md_df
-
-    def inquiry_price_at_date(self, contact: str, instrument: str, trade_date: str, price_type: str = "close") -> float:
-        return self.md[price_type][instrument].at[trade_date, contact]
+from husfort.qmm import CManagerMarketData, CManagerMajor
 
 
 class CManagerSignal(object):
@@ -55,7 +26,8 @@ class CManagerSignal(object):
         self.factor = factor
         self.universe: set = set(universe)
         self.factor_lib: CManagerLibReader = CLibFactor(factor=factor, lib_save_dir=factors_dir).get_lib_reader()
-        self.available_universe_lib: CManagerLibReader = CLibAvailableUniverse(lib_save_dir=available_universe_dir).get_lib_reader()
+        self.available_universe_lib: CManagerLibReader = CLibAvailableUniverse(
+            lib_save_dir=available_universe_dir).get_lib_reader()
         self.mgr_md: CManagerMarketData = mgr_md
         self.mgr_major: CManagerMajor = mgr_major
 
@@ -81,7 +53,8 @@ class CManagerSignal(object):
         else:
             header_weight_df.reset_index(inplace=True)  # columns = ["instrument", "factor", self.factor]
             header_weight_df.sort_values(by=[self.factor, "instrument"], ascending=[False, True], inplace=True)
-            header_weight_df["contract"] = header_weight_df["instrument"].map(lambda z: self.mgr_major.inquiry_major_contract(z, sig_date))
+            header_weight_df["contract"] = header_weight_df["instrument"].map(
+                lambda z: self.mgr_major.inquiry_major_contract(z, sig_date))
             header_weight_df["price"] = header_weight_df[["instrument", "contract"]].apply(
                 lambda z: self.mgr_md.inquiry_price_at_date(z["contract"], z["instrument"], sig_date), axis=1)
             header_weight_df["direction"] = header_weight_df[self.factor].map(lambda z: int(np.sign(z)))
@@ -89,7 +62,6 @@ class CManagerSignal(object):
             return header_weight_df[["contract", "price", "direction", "weight"]]
 
 
-# ------------------------------------------ Classes about trades -------------------------------------------------------------------
 class CTrade(object):
     def __init__(self, pos_key: CPosKey, operation: TOperation, quantity: int):
         """
@@ -204,7 +176,8 @@ class CPositionPlus(CPosition):
 
     @property
     def unrealized_pnl(self) -> float:
-        return (self.last_price - self.cost_price) * self.pos_key.direction * self.pos_key.contract.contract_multiplier * self._quantity
+        dp = self.last_price - self.cost_price
+        return dp * self.pos_key.direction * self.pos_key.contract.contract_multiplier * self._quantity
 
     def update_from_trade(self, exe_date: str, trade: CTrade, cost_rate: float) -> dict:
         quantity, executed_price = trade.executed_quantity, trade.executed_price
@@ -215,7 +188,8 @@ class CPositionPlus(CPosition):
             self._quantity += quantity
             self.cost_price = amt_new / self._quantity
         elif trade.operation_is_cls():
-            realized_pnl = (executed_price - self.cost_price) * self.pos_key.direction * self.pos_key.contract.contract_multiplier * quantity
+            dp = executed_price - self.cost_price
+            realized_pnl = dp * self.pos_key.direction * self.pos_key.contract.contract_multiplier * quantity
             self._quantity -= quantity
         else:
             print(f"operation = {trade.operation} is illegal")
@@ -250,7 +224,8 @@ class CPositionPlus(CPosition):
 
 # --- Class: Portfolio
 class CPortfolio(object):
-    def __init__(self, pid: str, init_cash: float, cost_reservation: float, cost_rate: float, dir_pid: str, verbose: bool = True):
+    def __init__(self, pid: str, init_cash: float, cost_reservation: float, cost_rate: float, dir_pid: str,
+                 verbose: bool = True):
         self.pid: str = pid
 
         # pnl
@@ -285,7 +260,8 @@ class CPortfolio(object):
         self.daily_summary = {"trade_date": exe_date}
         return 0
 
-    def _cal_target_position(self, new_pos_df: pd.DataFrame, instru_info_tab: CInstrumentInfoTable) -> dict[CPosKey, CPosition]:
+    def _cal_target_position(
+            self, new_pos_df: pd.DataFrame, instru_info_tab: CInstrumentInfoTable) -> dict[CPosKey, CPosition]:
         """
 
         :param new_pos_df : a DataFrame with columns = ["contract", "price", "direction", "weight"]
@@ -300,7 +276,8 @@ class CPortfolio(object):
         """
         mgr_tgt_pos: dict[CPosKey, CPosition] = {}
         tot_allocated_amt = self.nav / (1 + self.cost_reservation)
-        for contract_id, direction, price, weight in zip(new_pos_df["contract"], new_pos_df["direction"], new_pos_df["price"], new_pos_df["weight"]):
+        for contract_id, direction, price, weight in zip(new_pos_df["contract"], new_pos_df["direction"],
+                                                         new_pos_df["price"], new_pos_df["weight"]):
             if direction == 1:
                 contract = CContract.gen_from_contract_id(contract_id, instru_info_tab)
                 pos_key = CPosKey(contract, CONST_DIRECTION_LNG)
@@ -352,6 +329,13 @@ class CPortfolio(object):
                 trade_open_new = CTrade(pos_key=pos_key, operation=CONST_OPERATION_OPN, quantity=quantity)
                 trades.append(trade_open_new)
         return trades
+
+    @staticmethod
+    def _lookup_price_for_trades(trades: list[CTrade], mgr_md: CManagerMarketData, exe_date: str):
+        for trade in trades:
+            contract_id, instrument = trade.contract_and_instru_id()
+            trade.executed_price = mgr_md.inquiry_price_at_date(contract_id, instrument, exe_date)
+        return 0
 
     def _update_from_trades(self, trades: list[CTrade], exe_date: str):
         for trade in trades:
@@ -467,9 +451,8 @@ class CPortfolio(object):
              mgr_signal: CManagerSignal, mgr_md: CManagerMarketData, mgr_major: CManagerMajor):
         base_date = calendar.get_next_date(simu_bgn_date, -1)
         trade_dates = calendar.get_iter_list(bgn_date=base_date, stp_date=simu_stp_date)
-        for ti, exe_date in enumerate(trade_dates[1:]):
+        for (ti, exe_date), sig_date in zip(enumerate(trade_dates[1:]), trade_dates[:-1]):
             # --- initialize
-            sig_date = trade_dates[ti]
             self._initialize_daily(exe_date=exe_date)
 
             # --- check signal and major shift to create new trades ---
@@ -480,12 +463,11 @@ class CPortfolio(object):
                 mgr_new_pos: dict[CPosKey, CPosition] = self._cal_target_position(new_pos_df, instru_info_tab)
                 new_trades = self._cal_trades_for_signal(mgr_tgt_pos=mgr_new_pos)
             else:
-                new_trades = self._cal_trades_for_major(mgr_major=mgr_major, sig_date=sig_date)  # use this function to check for major-shift
+                new_trades = self._cal_trades_for_major(mgr_major=mgr_major,
+                                                        sig_date=sig_date)  # use this function to check for major-shift
 
             # --- set price for new trade
-            for new_trade in new_trades:
-                contract_id, instrument = new_trade.contract_and_instru_id()
-                new_trade.executed_price = mgr_md.inquiry_price_at_date(contract_id, instrument, exe_date)
+            self._lookup_price_for_trades(new_trades, mgr_md, exe_date)
 
             # --- update from trades and position
             self._update_from_trades(trades=new_trades, exe_date=exe_date)
@@ -555,8 +537,10 @@ if __name__ == "__main__":
     ]
     test_bgn_date, test_stp_date = "20140701", "20240109"
     test_calendar = CCalendar(r"E:\Deploy\Data\Calendar\cne_calendar.csv")
-    test_instru_info_tab = CInstrumentInfoTable(r"E:\Deploy\Data\Futures\InstrumentInfo3.csv", file_type="CSV", index_label="windCode")
-    test_mgr_md = CManagerMarketData(universe=test_universe, market_data_dir=r"E:\Deploy\Data\Futures\by_instrument\by_instru_md")
+    test_instru_info_tab = CInstrumentInfoTable(r"E:\Deploy\Data\Futures\InstrumentInfo3.csv", file_type="CSV",
+                                                index_label="windCode")
+    test_mgr_md = CManagerMarketData(universe=test_universe,
+                                     market_data_dir=r"E:\Deploy\Data\Futures\by_instrument\by_instru_md")
     test_mgr_major = CManagerMajor(universe=test_universe, major_minor_dir=r"E:\Deploy\Data\Futures\by_instrument")
     test_mgr_signal = CManagerSignal(factor="ND", universe=test_universe,
                                      factors_dir=r"E:\Deploy\Data\ForProjects\cta3\signals\portfolios",

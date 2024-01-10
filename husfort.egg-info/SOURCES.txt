@@ -5,6 +5,7 @@ husfort/qcalendar.py
 husfort/qevaluation.py
 husfort/qinstruments.py
 husfort/qmails.py
+husfort/qmm.py
 husfort/qsimulation.py
 husfort/qsqlite.py
 husfort/qutility.py
