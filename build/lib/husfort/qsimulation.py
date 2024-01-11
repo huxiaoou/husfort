@@ -129,7 +129,7 @@ class CPosition(object):
         return self._pos_key
 
     @property
-    def pos_id(self) -> tuple[str, str]:
+    def contract_and_instru_id(self) -> tuple[str, str]:
         return self.pos_key.contract.contract_and_instru_id()
 
     @property
@@ -182,6 +182,10 @@ class CPositionPlus(CPosition):
     @property
     def last_value(self) -> float:
         return self.last_price * self.pos_key.direction * self.pos_key.contract.contract_multiplier * self._quantity
+
+    @property
+    def cost_value(self) -> float:
+        return self.cost_price * self.pos_key.direction * self.pos_key.contract.contract_multiplier * self._quantity
 
     @property
     def unrealized_pnl(self) -> float:
@@ -241,11 +245,79 @@ class CPortfolio(object):
             self.snapshots_pos: list[dict] = []
             self.record_trades: list[dict] = []
 
+            self.snapshots_pos_df = pd.DataFrame()
+            self.record_trades_df = pd.DataFrame()
+
         def reset(self, exe_date: str):
             self.unrealized_pnl, self.realized_pnl = 0.0, 0.0
             self.snapshots_pos.clear()
             self.record_trades.clear()
+            self.snapshots_pos_df = pd.DataFrame()
+            self.record_trades_df = pd.DataFrame()
             self.summary = {"trade_date": exe_date}
+            return 0
+
+        def _get_pos_summary(self) -> dict:
+            df = self.snapshots_pos_df
+            if df.empty:
+                return {
+                    "qtyPos": 0,
+                    "qtyNeg": 0,
+                    "qtyTot": 0,
+                    "valPos": 0,
+                    "valNeg": 0,
+                    "valNet": 0,
+                    "valTot": 0,
+                    "unrealizedPnl": 0,
+                }
+            else:
+                filter_pos = df["direction"] > 0
+                filter_neg = df["direction"] < 0
+                pos_df, neg_df = df.loc[filter_pos], df.loc[filter_neg]
+                qty_pos, qty_neg = pos_df["quantity"].sum(), neg_df["quantity"].sum()
+                qty_tot = qty_pos + qty_neg
+                val_pos, val_neg = pos_df["last_value"].sum(), neg_df["last_value"].sum()
+                val_net, val_tot = val_pos + val_neg, val_pos - val_neg
+                unrealized_pnl = df["unrealized_pnl"].sum()
+                return {
+                    "qtyPos": qty_pos,
+                    "qtyNeg": qty_neg,
+                    "qtyTot": qty_tot,
+                    "valPos": val_pos,
+                    "valNeg": val_neg,
+                    "valNet": val_net,
+                    "valTot": val_tot,
+                    "unrealizedPnl": unrealized_pnl,
+                }
+
+        def update_unrealized(self):
+            if self.snapshots_pos:
+                self.snapshots_pos_df = pd.DataFrame(self.snapshots_pos)
+                self.unrealized_pnl = self.snapshots_pos_df["unrealized_pnl"].sum()
+            self.summary.update(self._get_pos_summary())
+            return 0
+
+        def get_snapshots_pos(self) -> pd.DataFrame:
+            return self.snapshots_pos_df
+
+        def update_realized(self):
+            if self.record_trades:
+                self.record_trades_df = pd.DataFrame(self.record_trades)
+                sum_realized_pnl = self.record_trades_df["realized_pnl"].sum()
+                sum_cost = self.record_trades_df["cost"].sum()
+                self.realized_pnl = sum_realized_pnl - sum_cost
+            self.summary.update({"realizedPnl": self.realized_pnl})
+            return 0
+
+        def get_record_trades(self) -> pd.DataFrame:
+            return self.record_trades_df
+
+        def update_nav(self, realized_pnl_cumsum: float, nav: float, navps: float):
+            self.summary.update({
+                "realizedPnlCumSum": realized_pnl_cumsum,
+                "nav": nav,
+                "navps": navps,
+            })
             return 0
 
     class _CSimuRecorder(object):
@@ -253,13 +325,20 @@ class CPortfolio(object):
             self.init_cash: float = init_cash
             self.realized_pnl_cumsum: float = 0
             self.nav: float = 0
+            self.navps: float = 0
+            self.update_nav(unrealized_pnl=0, realized_pnl=0)
             self.snapshots_nav = []
             self.snapshots_pos_dfs: list[pd.DataFrame] = []
             self.record_trades_dfs: list[pd.DataFrame] = []
-            self.update_nav(0)
 
-        def update_nav(self, unrealized_pnl: float):
+        def update_nav(self, unrealized_pnl: float, realized_pnl: float):
+            self.realized_pnl_cumsum += realized_pnl
             self.nav = self.init_cash + self.realized_pnl_cumsum + unrealized_pnl
+            self.navps = self.nav / self.init_cash
+            return 0
+
+        def take_snapshots_of_nav(self, d: dict):
+            self.snapshots_nav.append(d)
             return 0
 
     def __init__(self, pid: str, init_cash: float, cost_reservation: float, cost_rate: float,
@@ -311,7 +390,7 @@ class CPortfolio(object):
         # cross comparison: step 0, check if new position is in old position
         for new_key, new_pos in mgr_tgt_pos.items():
             if new_key not in self.manager_pos:
-                self.manager_pos[new_key] = CPositionPlus(pos_key=new_key)
+                self.manager_pos[new_key] = CPositionPlus(new_key)
             new_trade: CTrade = self.manager_pos[new_key].cal_trade_from_other_pos(other=new_pos)  # could be none
             if new_trade is not None:
                 trades.append(new_trade)
@@ -326,21 +405,19 @@ class CPortfolio(object):
     def _cal_trades_for_major(self, mgr_major: CManagerMajor, sig_date: str) -> list[CTrade]:
         trades: list[CTrade] = []
         for old_key, old_pos in self.manager_pos.items():
-            (old_contract_id, instrument), quantity = old_pos.pos_id, old_pos.quantity
+            (old_contract_id, instrument), quantity = old_pos.contract_and_instru_id, old_pos.quantity
             new_contract_id = mgr_major.inquiry_major_contract(instrument=instrument, trade_date=sig_date)
             if old_contract_id != new_contract_id:
-                # close old
-                trades.append(old_pos.get_close_trade())
-                # open  new
-                new_contract = CContract.gen_from_other(new_contract_id, old_key.contract)
-                pos_key = CPosKey(new_contract, old_key.direction)
-                trade_open_new = CTrade(pos_key=pos_key, operation=CONST_OPERATION_OPN, quantity=quantity)
-                trades.append(trade_open_new)
+                trades.append(old_pos.get_close_trade())  # close old
+                new_key = CPosKey(contract=CContract.gen_from_other(new_contract_id, old_key.contract),
+                                  direction=old_key.direction)
+                self.manager_pos[new_key] = CPositionPlus(new_key)
+                trades.append(CTrade(new_key, CONST_OPERATION_OPN, quantity))  # open  new
         return trades
 
     @staticmethod
-    def _lookup_price_for_trades(trades: list[CTrade],
-                                 mgr_md: CManagerMarketData, exe_date: str, trade_price_type: str):
+    def _match_price_for_trades(trades: list[CTrade],
+                                mgr_md: CManagerMarketData, exe_date: str, trade_price_type: str):
         for trade in trades:
             contract_id, instrument = trade.contract_and_instru_id()
             trade.executed_price = mgr_md.inquiry_price_at_date(contract_id, instrument, exe_date, trade_price_type)
@@ -357,79 +434,43 @@ class CPortfolio(object):
 
     def _update_positions(self, mgr_md: CManagerMarketData, settle_price_type: str, exe_date: str) -> int:
         for pos in self.manager_pos.values():
-            contract, instrument = pos.pos_id
+            contract_id, instrument = pos.contract_and_instru_id
             last_price = mgr_md.inquiry_price_at_date(
-                contact=contract, instrument=instrument, trade_date=exe_date,
+                contact=contract_id, instrument=instrument, trade_date=exe_date,
                 price_type=settle_price_type
             )
             if np.isnan(last_price):
-                print(f"nan price for {contract} {exe_date}")
+                print(f"nan price for {contract_id} {exe_date}")
             else:
                 pos.update_last_price(price=last_price)
             self.daily_recorder.snapshots_pos.append(pos.to_dict(exe_date))
         return 0
 
-    @staticmethod
-    def _get_pos_summary(df: pd.DataFrame) -> dict:
-        if df.empty:
-            return {
-                "qtyPos": 0,
-                "qtyNeg": 0,
-                "qtyTot": 0,
-                "valPos": 0,
-                "valNeg": 0,
-                "valNet": 0,
-                "valTot": 0,
-                "unrealizedPnl": 0,
-            }
-        else:
-            filter_pos = df["direction"] > 0
-            filter_neg = df["direction"] < 0
-            pos_df, neg_df = df.loc[filter_pos], df.loc[filter_neg]
-            qty_pos, qty_neg = pos_df["quantity"].sum(), neg_df["quantity"].sum()
-            qty_tot = qty_pos + qty_neg
-            val_pos, val_neg = pos_df["last_value"].sum(), neg_df["last_value"].sum()
-            val_net, val_tot = val_pos + val_neg, val_pos - val_neg
-            unrealized_pnl = df["unrealized_pnl"].sum()
-            return {
-                "qtyPos": qty_pos,
-                "qtyNeg": qty_neg,
-                "qtyTot": qty_tot,
-                "valPos": val_pos,
-                "valNeg": val_neg,
-                "valNet": val_net,
-                "valTot": val_tot,
-                "unrealizedPnl": unrealized_pnl,
-            }
-
     def _cal_unrealized_pnl(self):
-        pos_daily_df = pd.DataFrame(self.daily_recorder.snapshots_pos)
-        if not pos_daily_df.empty:
-            self.daily_recorder.unrealized_pnl = pos_daily_df["unrealized_pnl"].sum()
-            self.simu_recorder.snapshots_pos_dfs.append(pos_daily_df)
-        self.daily_recorder.summary.update(self._get_pos_summary(pos_daily_df))
+        self.daily_recorder.update_unrealized()
+        snapshots_pos_df = self.daily_recorder.get_snapshots_pos()
+        if not snapshots_pos_df.empty:
+            self.simu_recorder.snapshots_pos_dfs.append(snapshots_pos_df)
         return 0
 
     def _cal_realized_pnl(self):
-        realized_pnl_daily_df = pd.DataFrame(self.daily_recorder.record_trades)
-        if not realized_pnl_daily_df.empty:
-            self.daily_recorder.realized_pnl = realized_pnl_daily_df["realized_pnl"].sum() \
-                                               - realized_pnl_daily_df["cost"].sum()
-            self.simu_recorder.record_trades_dfs.append(realized_pnl_daily_df)
-        self.simu_recorder.realized_pnl_cumsum += self.daily_recorder.realized_pnl
-        self.daily_recorder.summary.update({
-            "realizedPnl": self.daily_recorder.realized_pnl,
-            "realizedPnlCumSum": self.simu_recorder.realized_pnl_cumsum,
-        })
+        self.daily_recorder.update_realized()
+        record_trades_df = self.daily_recorder.get_record_trades()
+        if not record_trades_df.empty:
+            self.simu_recorder.record_trades_dfs.append(record_trades_df)
         return 0
 
     def _cal_nav(self) -> int:
-        self.simu_recorder.update_nav(self.daily_recorder.unrealized_pnl)
-        self.daily_recorder.summary.update({
-            "nav": self.simu_recorder.nav,
-            "navps": self.simu_recorder.nav / self.simu_recorder.init_cash,
-        })
-        self.simu_recorder.snapshots_nav.append(self.daily_recorder.summary)
+        self.simu_recorder.update_nav(
+            unrealized_pnl=self.daily_recorder.unrealized_pnl,
+            realized_pnl=self.daily_recorder.realized_pnl,
+        )
+        self.daily_recorder.update_nav(
+            realized_pnl_cumsum=self.simu_recorder.realized_pnl_cumsum,
+            nav=self.simu_recorder.nav,
+            navps=self.simu_recorder.navps,
+        )
+        self.simu_recorder.take_snapshots_of_nav(self.daily_recorder.summary)
         return 0
 
     def _save_position(self) -> int:
@@ -477,7 +518,7 @@ class CPortfolio(object):
                 new_trades = self._cal_trades_for_major(mgr_major=mgr_major, sig_date=sig_date)
 
             # --- set price for new trade
-            self._lookup_price_for_trades(new_trades, mgr_md, exe_date, trade_price_type)
+            self._match_price_for_trades(new_trades, mgr_md, exe_date, trade_price_type)
 
             # --- update from trades and position
             self._update_from_trades(trades=new_trades, exe_date=exe_date)
