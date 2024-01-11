@@ -491,9 +491,10 @@ class CPortfolio(object):
 
     def _save_nav(self) -> int:
         nav_daily_df = pd.DataFrame(self.simu_recorder.snapshots_nav)
+        nav_daily_df["navps"] = nav_daily_df["navps"].map(lambda _: f"{_:.6f}")
         nav_daily_file = f"{self.pid}.nav.daily.csv.gz"
         nav_daily_path = os.path.join(self.dir_pid, nav_daily_file)
-        nav_daily_df.to_csv(nav_daily_path, index=False, float_format="%.6f", compression="gzip")
+        nav_daily_df.to_csv(nav_daily_path, index=False, float_format="%.2f", compression="gzip")
         return 0
 
     def main(self, simu_bgn_date: str, simu_stp_date: str, start_delay: int, hold_period_n: int,
