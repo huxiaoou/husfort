@@ -501,9 +501,10 @@ class CPortfolio(object):
              trade_price_type: str, settle_price_type: str,
              calendar: CCalendar, instru_info_tab: CInstrumentInfoTable,
              mgr_signal: CManagerSignal, mgr_md: CManagerMarketData, mgr_major: CManagerMajor):
-        base_date = calendar.get_next_date(simu_bgn_date, -1)
-        trade_dates = calendar.get_iter_list(bgn_date=base_date, stp_date=simu_stp_date)
-        for (ti, exe_date), sig_date in zip(enumerate(trade_dates[1:]), trade_dates[:-1]):
+        exe_dates = calendar.get_iter_list(bgn_date=simu_bgn_date, stp_date=simu_stp_date)
+        base_date = calendar.get_next_date(exe_dates[0], -1)
+        sig_dates = [base_date] + exe_dates[:-1]
+        for (ti, exe_date), sig_date in zip(enumerate(exe_dates), sig_dates):
             # --- initialize
             self._initialize_daily(exe_date=exe_date)
 

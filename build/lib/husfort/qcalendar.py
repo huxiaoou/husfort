@@ -83,7 +83,16 @@ class CSection(object):
     def __lt__(self, other: "CSection"):
         return self.secId < other.secId
 
-    def match(self, tp: str):
+    def __ge__(self, other: "CSection"):
+        return self.secId >= other.secId
+
+    def __gt__(self, other: "CSection"):
+        return self.secId > other.secId
+
+    def __eq__(self, other: "CSection"):
+        return self.secId == other.secId
+
+    def match(self, tp: str) -> bool:
         return self.bgnTime <= tp <= self.endTime
 
 
@@ -177,3 +186,119 @@ class CCalendarSection(object):
                 s = None
         parse_success = (b is not None) and (s is not None)
         return parse_success, (b, s)
+
+
+@dataclass(frozen=True)
+class CMonth(object):
+    trade_month: str
+    trade_dates: tuple[str]
+
+    def __le__(self, other: "CMonth"):
+        return self.trade_month <= other.trade_month
+
+    def __lt__(self, other: "CMonth"):
+        return self.trade_month < other.trade_month
+
+    def __ge__(self, other: "CMonth"):
+        return self.trade_month >= other.trade_month
+
+    def __gt__(self, other: "CMonth"):
+        return self.trade_month > other.trade_month
+
+    def __eq__(self, other: "CMonth"):
+        return self.trade_month == other.trade_month
+
+    @property
+    def bgn_date(self) -> str:
+        return self.trade_dates[0]
+
+    @property
+    def end_date(self) -> str:
+        return self.trade_dates[-1]
+
+    def match_from_date(self, trade_date: str) -> bool:
+        return self.bgn_date <= trade_date <= self.end_date
+
+    def match_from_month(self, month_id: str) -> bool:
+        return self.trade_month == month_id
+
+
+class CCalendarMonth(object):
+    def __init__(self, calendar_path: os.path, header: int = 0):
+        if isinstance(header, int):
+            calendar_df = pd.read_csv(calendar_path, dtype=str, header=header)
+        else:
+            calendar_df = pd.read_csv(calendar_path, dtype=str, header=None, names=["trade_date"])
+        calendar_df["trade_month"] = calendar_df["trade_date"].map(lambda z: z.replace("-", "")[0:6])
+        self.trade_months: list[CMonth] = []
+        for (trade_month, trade_month_df) in calendar_df.groupby(by="trade_month"):
+            month = CMonth(
+                trade_month=trade_month,
+                trade_dates=tuple(trade_month_df["trade_date"].tolist())
+            )
+            self.trade_months.append(month)
+
+    def match_month_from_id(self, month_id: str) -> tuple[bool, CMonth | None]:
+        """
+
+        :param month_id: "YYYYMM"
+        :return:
+        """
+        for trade_month in self.trade_months:
+            if trade_month.match_from_month(month_id):
+                return True, trade_month
+        return False, None
+
+    def match_month_from_date(self, trade_date: str) -> tuple[bool, CMonth | None]:
+        """
+
+        :param trade_date: "YYYYMMDD"
+        :return:
+        """
+        for trade_month in self.trade_months:
+            if trade_month.match_from_date(trade_date):
+                return True, trade_month
+        return False, None
+
+    def get_next_month(self, trade_month: CMonth, shift: int) -> CMonth:
+        """
+
+        :param trade_month:
+        :param shift: > 0, in the future; < 0, in the past
+        :return:
+        """
+        trade_month_idx = self.trade_months.index(trade_month)
+        return self.trade_months[trade_month_idx + shift]
+
+    def get_iter_months(self, bgn_month: CMonth, stp_month: CMonth) -> list[CMonth]:
+        bgn_idx = self.trade_months.index(bgn_month)
+        stp_idx = self.trade_months.index(stp_month)
+        return self.trade_months[bgn_idx:stp_idx]
+
+    def map_iter_dates_to_iter_month(self, bgn_date: str, stp_date: str,
+                                     calendar: CCalendar, exclude_last: bool = True) -> list[CMonth]:
+        """
+
+        :param bgn_date:
+        :param stp_date:
+        :param calendar:
+        :param exclude_last: if true, last month between iter dates is not full will be excluded from
+                             the final results
+        :return:
+        """
+        iter_dates = calendar.get_iter_list(bgn_date, stp_date)
+        _, bgn_month = self.match_month_from_date(iter_dates[0])
+        if exclude_last:
+            true_stp_date = calendar.get_next_date(iter_dates[-1], shift=1)
+            _, stp_month = self.match_month_from_date(true_stp_date)
+        else:
+            _, end_month = self.match_month_from_date(iter_dates[-1])
+            stp_month = self.get_next_month(end_month, shift=1)
+        months = self.get_iter_months(bgn_month, stp_month)
+        return months
+
+    def get_bgn_and_end_dates_for_trailing_window(self, end_month: CMonth, trn_win: int) -> tuple[str, str]:
+        bgn_month = self.get_next_month(end_month, -trn_win + 1)
+        bgn_date = bgn_month.bgn_date
+        end_date = end_month.end_date
+        return bgn_date, end_date
