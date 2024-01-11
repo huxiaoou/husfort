@@ -323,10 +323,10 @@ class CPortfolio(object):
     class _CSimuRecorder(object):
         def __init__(self, init_cash: float):
             self.init_cash: float = init_cash
-            self.realized_pnl_cumsum: float = 0
-            self.nav: float = 0
-            self.navps: float = 0
-            self.update_nav(unrealized_pnl=0, realized_pnl=0)
+            self.realized_pnl_cumsum: float = 0.0
+            self.nav: float = 0.0
+            self.navps: float = 0.0
+            self.update_nav(unrealized_pnl=0.0, realized_pnl=0.0)
             self.snapshots_nav = []
             self.snapshots_pos_dfs: list[pd.DataFrame] = []
             self.record_trades_dfs: list[pd.DataFrame] = []
@@ -493,7 +493,7 @@ class CPortfolio(object):
         nav_daily_df = pd.DataFrame(self.simu_recorder.snapshots_nav)
         nav_daily_file = f"{self.pid}.nav.daily.csv.gz"
         nav_daily_path = os.path.join(self.dir_pid, nav_daily_file)
-        nav_daily_df.to_csv(nav_daily_path, index=False, float_format="%.4f", compression="gzip")
+        nav_daily_df.to_csv(nav_daily_path, index=False, float_format="%.6f", compression="gzip")
         return 0
 
     def main(self, simu_bgn_date: str, simu_stp_date: str, start_delay: int, hold_period_n: int,
@@ -608,7 +608,7 @@ if __name__ == "__main__":
     )
     test_portfolio = CPortfolio(
         pid="test_simu", init_cash=10000000,
-        cost_reservation=0, cost_rate=5e-4,
+        cost_reservation=0.0, cost_rate=5e-4,
         dir_pid=r"E:\TMP"
     )
     test_portfolio.main(
