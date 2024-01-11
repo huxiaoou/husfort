@@ -62,6 +62,16 @@ class CCalendar(object):
         """
         return (dt.datetime.strptime(trade_date, "%Y%m%d") + dt.timedelta(days=move_days)).strftime("%Y%m%d")
 
+    @staticmethod
+    def convert_d08_to_d10(date: str):
+        # "202100101" -> "2021-01-01"
+        return date[0:4] + "-" + date[4:6] + "-" + date[6:8]
+
+    @staticmethod
+    def convert_d10_to_d08(date: str):
+        # "20210-01-01" -> "20210101"
+        return date.replace("-", "")
+
 
 CONST_TS1, CONST_TS2 = "TS1", "TS2"
 

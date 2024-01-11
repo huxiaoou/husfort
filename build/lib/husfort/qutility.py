@@ -1,4 +1,21 @@
 import os
+import shutil
+import re
+
+
+def get_mix_string_len(mix_string: str, expected_len: int):
+    """
+
+    :param mix_string: example "食品ETF09"
+    :param expected_len: length of expected output string
+    :return: f"{mix_string:ks}" would occupy expected_len characters when print,
+             which will make mix_string aligned with pure English string
+    """
+    # chs_string = re.sub("[0-9a-zA-Z]", "", t_mix_string)
+    chs_string = re.sub("[\\da-zA-Z]", "", mix_string)
+    chs_string_len = len(chs_string)
+    k = max(expected_len - chs_string_len, len(mix_string) + chs_string_len)
+    return k
 
 
 def SetFontColor(c):
@@ -29,6 +46,18 @@ def check_and_makedirs(dir_path: str):
     return 0
 
 
+def remove_files_in_the_dir(dir_path: str):
+    for f in os.listdir(dir_path):
+        os.remove(os.path.join(dir_path, f))
+    return 0
+
+
+def check_and_remove_tree(dir_path: str):
+    if os.path.exists(dir_path):
+        shutil.rmtree(dir_path)
+    return 0
+
+
 def hide_cursor():
     print("\033[?25l", end="")
     return 0
@@ -37,3 +66,18 @@ def hide_cursor():
 def show_cursor():
     print("\033[?25h", end="")
     return 0
+
+
+if __name__ == "__main__":
+    w = 24
+    test_string = "食品09ETF"
+
+    h = "-" * w
+    adj_w = get_mix_string_len(mix_string=test_string, expected_len=w)
+    print(h)
+    print("NOT ALIGNED:")
+    print(f"{test_string:>{f'{w}s'}}")
+    print(h)
+    print("ALIGNED:")
+    print(f"{test_string:>{f'{adj_w}s'}}")
+    print(h)
