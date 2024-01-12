@@ -342,7 +342,11 @@ class CPortfolio(object):
             return 0
 
     def __init__(self, pid: str, init_cash: float, cost_reservation: float, cost_rate: float,
-                 dir_pid: str, verbose: bool = True):
+                 dir_pid: str, verbose: bool = True,
+                 record_trades_file_tmpl: str = "{}.trades.csv.gz",
+                 snapshots_pos_file_tmpl: str = "{}.positions.csv.gz",
+                 nav_daily_file_tmpl: str = "{}.nav_daily.csv.gz",
+                 ):
         self.pid: str = pid
         self.daily_recorder = self._CDailyRecorder()
         self.simu_recorder = self._CSimuRecorder(init_cash)
@@ -357,6 +361,9 @@ class CPortfolio(object):
         # save nav
         self.dir_pid: str = dir_pid
         self.verbose: bool = verbose
+        self.record_trades_file_tmpl = record_trades_file_tmpl
+        self.snapshots_pos_file_tmpl = snapshots_pos_file_tmpl
+        self.nav_daily_file_tmpl = nav_daily_file_tmpl
 
     def _initialize_daily(self, exe_date: str) -> int:
         self.daily_recorder.reset(exe_date)
@@ -476,7 +483,7 @@ class CPortfolio(object):
     def _save_position(self) -> int:
         if self.verbose:
             positions_df = pd.concat(self.simu_recorder.snapshots_pos_dfs, axis=0, ignore_index=True)
-            positions_file = f"{self.pid}.positions.csv.gz"
+            positions_file = self.snapshots_pos_file_tmpl.format(self.pid)
             positions_path = os.path.join(self.dir_pid, positions_file)
             positions_df.to_csv(positions_path, index=False, float_format="%.6f", compression="gzip")
         return 0
@@ -484,7 +491,7 @@ class CPortfolio(object):
     def _save_trades(self) -> int:
         if self.verbose:
             record_trades_df = pd.concat(self.simu_recorder.record_trades_dfs, axis=0, ignore_index=True)
-            record_trades_file = f"{self.pid}.trades.csv.gz"
+            record_trades_file = self.record_trades_file_tmpl.format(self.pid)
             record_trades_path = os.path.join(self.dir_pid, record_trades_file)
             record_trades_df.to_csv(record_trades_path, index=False, float_format="%.6f", compression="gzip")
         return 0
@@ -492,7 +499,7 @@ class CPortfolio(object):
     def _save_nav(self) -> int:
         nav_daily_df = pd.DataFrame(self.simu_recorder.snapshots_nav)
         nav_daily_df["navps"] = nav_daily_df["navps"].map(lambda _: f"{_:.6f}")
-        nav_daily_file = f"{self.pid}.nav.daily.csv.gz"
+        nav_daily_file = self.nav_daily_file_tmpl.format(self.pid)
         nav_daily_path = os.path.join(self.dir_pid, nav_daily_file)
         nav_daily_df.to_csv(nav_daily_path, index=False, float_format="%.2f", compression="gzip")
         return 0
@@ -609,13 +616,13 @@ if __name__ == "__main__":
         available_universe_dir=r"E:\Deploy\Data\ForProjects\cta3\available_universe"
     )
     test_portfolio = CPortfolio(
-        pid="test_simu", init_cash=10000000,
+        pid="test_simu_open", init_cash=10000000,
         cost_reservation=0.0, cost_rate=5e-4,
         dir_pid=r"E:\TMP"
     )
     test_portfolio.main(
         simu_bgn_date=test_bgn_date, simu_stp_date=test_stp_date, start_delay=0, hold_period_n=1,
-        trade_price_type="close", settle_price_type="close",
+        trade_price_type="open", settle_price_type="close",
         calendar=test_calendar, instru_info_tab=test_instru_info_tab,
         mgr_signal=test_mgr_signal, mgr_md=test_mgr_md, mgr_major=test_mgr_major,
     )
