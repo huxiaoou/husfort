@@ -20,6 +20,8 @@ class CPlotBase(object):
         self.fig_save_type = fig_save_type
         self.fig: plt.Figure | None = None
         self.ax: plt.Axes | None = None
+        plt.style.use(self.style)
+        self.fig, self.ax = plt.subplots(figsize=self.fig_size)
 
     def _set_title(self, title: str = None, size: int = 32, loc: str = None):
         self.ax.set_title(title, fontsize=size, loc=loc)
@@ -94,11 +96,6 @@ class CPlotBase(object):
         self.ax.grid(visible=ygrid_visible, axis="y")
         return 0
 
-    def open(self):
-        plt.style.use(self.style)
-        self.fig, self.ax = plt.subplots(figsize=self.fig_size)
-        return 0
-
     def plot(self, title: str = None, title_size: int = 32, title_loc: str = None,
              legend_size: int = 12, legend_loc: str = "upper left",
 
@@ -126,9 +123,10 @@ class CPlotBase(object):
                          ytick_label_size=ytick_label_size, ytick_label_rotation=ytick_label_rotation,
                          ygrid_visible=ygrid_visible
                          )
+        self._close()
         return 0
 
-    def close(self):
+    def _close(self):
         fig0_name = f"{self.fig_name}.{self.fig_save_type}"
         fig0_path = os.path.join(self.fig_save_dir, fig0_name)
         self.fig.savefig(fig0_path, bbox_inches="tight")
@@ -284,7 +282,6 @@ class CPlotLinesTwinx(CPlotLines):
              ytick_label_size_twin: int = 12, ytick_label_rotation_twin: int = 0,
              ygrid_visible_twin: bool = False,
              **kwargs):
-        super().plot(**kwargs)
         self._set_axis_y_twin(
             ylim_twin=ylim_twin,
             ytick_count_twin=ytick_count_twin, ytick_spread_twin=ytick_spread_twin,
@@ -292,6 +289,7 @@ class CPlotLinesTwinx(CPlotLines):
             ytick_label_size_twin=ytick_label_size_twin, ytick_label_rotation_twin=ytick_label_rotation_twin,
             ygrid_visible_twin=ygrid_visible_twin
         )
+        super().plot(**kwargs)
         return 0
 
 
@@ -416,13 +414,11 @@ if __name__ == "__main__":
         line_color=['#A62525', '#188A06', '#06708A', '#DAF90E'],
         fig_save_dir="E:\\TMP"
     )
-    artist.open()
     artist.plot(
         xtick_label_size=16, xlabel='xxx', xtick_count=3,
         ylim=(-0.5, 2.0), ytick_label_size=16, ylabel='yyy', ytick_spread=0.25,
         title="指数走势"
     )
-    artist.close()
 
     # test plot bars
     artist = CPlotBars(
@@ -430,13 +426,11 @@ if __name__ == "__main__":
         bar_alpha=1.0, bar_width=1.0, bar_color=['#A62525', '#188A06', '#06708A'],
         fig_save_dir="E:\\TMP"
     )
-    artist.open()
     artist.plot(
         xtick_label_size=16, xlabel='xxx', xtick_count=3, xlabel_size=32,
-        ylim=(-0.5, 2.0), ytick_label_size=16, ylabel='yyy', ytick_spread=0.25,
-        title="指数走势"
+        ylim=(-2.0, 2.0), ytick_label_size=16, ylabel='yyy', ytick_spread=0.25,
+        title="日收益率"
     )
-    artist.close()
 
     # test plot twinx line + line
     artist = CPlotLinesTwinxLine(
@@ -447,9 +441,7 @@ if __name__ == "__main__":
         fig_name="test-plot-twin-line_line", style="seaborn-v0_8-poster",
         fig_save_dir="E:\\TMP"
     )
-    artist.open()
     artist.plot(ylim=(-0.5, 2.0), ylim_twin=(0.5, 1.5))
-    artist.close()
 
     # test plot twinx line + bar
     artist = CPlotLinesTwinxBar(
@@ -458,12 +450,10 @@ if __name__ == "__main__":
         fig_name="test-plot-twin-line_bar", style="seaborn-v0_8-poster",
         fig_save_dir="E:\\TMP"
     )
-    artist.open()
     artist.plot(xtick_count=12,
                 ytick_count_twin=6, ytick_spread_twin=None, ylabel_twin="bar-test",
                 ylabel_size_twin=36, ylim_twin=(-3, 3),
                 ytick_label_size_twin=24, ytick_label_rotation_twin=90)
-    artist.close()
 
     # test plot drawdown
     artist = CPlotSingleNavWithDrawdown(
@@ -472,7 +462,5 @@ if __name__ == "__main__":
         fig_name="test-plot-nav_drawdown", style="seaborn-v0_8-poster",
         fig_save_dir="E:\\TMP"
     )
-    artist.open()
     artist.plot(legend_loc="lower center", xtick_count=12, ylim_twin=(0.50, 0), ytick_spread_twin=-0.05,
                 xtick_label_size=24, ytick_label_size=24, ytick_label_size_twin=28)
-    artist.close()
