@@ -6,6 +6,7 @@ husfort/qevaluation.py
 husfort/qinstruments.py
 husfort/qmails.py
 husfort/qmm.py
+husfort/qoptimization.py
 husfort/qplot.py
 husfort/qsimulation.py
 husfort/qsqlite.py
