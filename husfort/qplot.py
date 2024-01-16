@@ -9,7 +9,7 @@ plt.rcParams["xtick.direction"] = "in"  # maker ticker direction of x-axis to in
 plt.rcParams["ytick.direction"] = "in"  # maker ticker direction of y-axis to inner
 
 
-class CPlotBase(object):
+class __CPlotBase(object):
     def __init__(self, fig_size: tuple = (16, 9), fig_name: str = None,
                  style: str = "seaborn-v0_8-poster",
                  fig_save_dir: str = ".", fig_save_type: str = "pdf"):
@@ -134,7 +134,7 @@ class CPlotBase(object):
         return 0
 
 
-class CPlotFromDataFrame(CPlotBase):
+class __CPlotFromDataFrame(__CPlotBase):
     def __init__(self, plot_df: pd.DataFrame, colormap: str = None, **kwargs):
         self.plot_df = plot_df
         self.data_len = len(plot_df)
@@ -151,7 +151,7 @@ class CPlotFromDataFrame(CPlotBase):
         return 0
 
 
-class CPlotLines(CPlotFromDataFrame):
+class CPlotLines(__CPlotFromDataFrame):
     def __init__(self, line_width: float = 2, line_style: list = None, line_color: list = None, **kwargs):
         """
 
@@ -213,7 +213,7 @@ class CPlotLines(CPlotFromDataFrame):
         return 0
 
 
-class CPlotBars(CPlotFromDataFrame):
+class CPlotBars(__CPlotFromDataFrame):
     def __init__(self, bar_color: list = None, bar_width: float = 0.8, bar_alpha: float = 1.0,
                  stacked: bool = False, **kwargs):
         self.bar_color = bar_color
@@ -237,7 +237,7 @@ class CPlotBars(CPlotFromDataFrame):
         return 0
 
 
-class CPlotLinesTwinx(CPlotLines):
+class __CPlotLinesTwinx(CPlotLines):
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
         self.ax_twin: plt.Axes | None = None
@@ -293,7 +293,7 @@ class CPlotLinesTwinx(CPlotLines):
         return 0
 
 
-class CPlotLinesTwinxLine(CPlotLinesTwinx):
+class CPlotLinesTwinxLine(__CPlotLinesTwinx):
     def __init__(self, plot_df: pd.DataFrame, primary_cols: list[str], secondary_cols: list[str],
                  second_line_width: float = 2, second_line_style: list = None, second_line_color: list = None,
                  second_colormap: str = None,
@@ -320,7 +320,7 @@ class CPlotLinesTwinxLine(CPlotLinesTwinx):
         return 0
 
 
-class CPlotLinesTwinxBar(CPlotLinesTwinx):
+class CPlotLinesTwinxBar(__CPlotLinesTwinx):
     def __init__(self, plot_df: pd.DataFrame, primary_cols: list[str], secondary_cols: list[str],
                  bar_color: list = None, bar_width: float = 0.8, bar_alpha: float = 1.0, bar_colormap: str = None,
                  **kwargs):
@@ -369,7 +369,7 @@ class CPlotSingleNavWithDrawdown(CPlotLinesTwinxBar):
         return 0
 
 
-class CPlotScatter(CPlotFromDataFrame):
+class CPlotScatter(__CPlotFromDataFrame):
     def __init__(self, point_x: str, point_y: str, point_size=None, point_color=None,
                  annotations_using_index: bool = False, annotations: list[str] = None,
                  annotations_location_drift: tuple = (0, 0),
@@ -383,7 +383,16 @@ class CPlotScatter(CPlotFromDataFrame):
         self.annotations_fontsize = annotations_fontsize
         super().__init__(**kwargs)
 
-    def plot_scatter(self):
+    def _set_axis_x(self, **kwargs):
+        return 0
+
+    def _set_axis_y(self, **kwargs):
+        return 0
+
+    def _set_legend(self, **kwargs):
+        return 0
+
+    def plot(self, **kwargs):
         self.plot_df.plot.scatter(ax=self.ax, x=self.point_x, y=self.point_y, s=self.point_size, c=self.point_color)
         if self.annotations_using_index:
             self.annotations = self.plot_df.index.tolist()
@@ -391,10 +400,12 @@ class CPlotScatter(CPlotFromDataFrame):
             for loc_x, loc_y, label in zip(self.plot_df[self.point_x], self.plot_df[self.point_y], self.annotations):
                 xytext = (loc_x + self.annotations_location_drift[0], loc_y + self.annotations_location_drift[1])
                 self.ax.annotate(label, xy=(loc_x, loc_y), xytext=xytext, fontsize=self.annotations_fontsize)
+        super().plot(**kwargs)
         return 0
 
 
 if __name__ == "__main__":
+    test_save_dir = r"E:\TMP"
     n = 252 * 5
     df = pd.DataFrame({
         "T": [f"T{_:03d}" for _ in range(n)],
@@ -412,7 +423,7 @@ if __name__ == "__main__":
         plot_df=df[["沪深300", "中证500", "南华商品"]], fig_name="test-plot-lines", style="seaborn-v0_8-poster",
         line_style=['-', '--', '-.', ':', ], line_width=2,
         line_color=['#A62525', '#188A06', '#06708A', '#DAF90E'],
-        fig_save_dir="E:\\TMP"
+        fig_save_dir=test_save_dir
     )
     artist.plot(
         xtick_label_size=16, xlabel='xxx', xtick_count=3,
@@ -424,7 +435,7 @@ if __name__ == "__main__":
     artist = CPlotBars(
         plot_df=df[["TEST", "TEST2"]], fig_name="test-plot-bars", style="seaborn-v0_8-poster",
         bar_alpha=1.0, bar_width=1.0, bar_color=['#A62525', '#188A06', '#06708A'],
-        fig_save_dir="E:\\TMP"
+        fig_save_dir=test_save_dir
     )
     artist.plot(
         xtick_label_size=16, xlabel='xxx', xtick_count=3, xlabel_size=32,
@@ -439,7 +450,7 @@ if __name__ == "__main__":
         line_color=["r", "g"], second_line_color=["b", "y"],
         line_width=1, second_line_width=3,
         fig_name="test-plot-twin-line_line", style="seaborn-v0_8-poster",
-        fig_save_dir="E:\\TMP"
+        fig_save_dir=test_save_dir
     )
     artist.plot(ylim=(-0.5, 2.0), ylim_twin=(0.5, 1.5))
 
@@ -448,7 +459,7 @@ if __name__ == "__main__":
         plot_df=df, primary_cols=["沪深300", "中证500", "南华商品"], secondary_cols=["TEST"],
         bar_color=["#DC143C"], bar_width=1.0, bar_alpha=0.8,
         fig_name="test-plot-twin-line_bar", style="seaborn-v0_8-poster",
-        fig_save_dir="E:\\TMP"
+        fig_save_dir=test_save_dir
     )
     artist.plot(xtick_count=12,
                 ytick_count_twin=6, ytick_spread_twin=None, ylabel_twin="bar-test",
@@ -460,7 +471,15 @@ if __name__ == "__main__":
         nav_srs=df["上证50"], nav_label="上证50", drawdown_label="回撤",
         nav_line_color=["#00008B"], drawdown_color=["#DC143C"],
         fig_name="test-plot-nav_drawdown", style="seaborn-v0_8-poster",
-        fig_save_dir="E:\\TMP"
+        fig_save_dir=test_save_dir
     )
     artist.plot(legend_loc="lower center", xtick_count=12, ylim_twin=(0.50, 0), ytick_spread_twin=-0.05,
                 xtick_label_size=24, ytick_label_size=24, ytick_label_size_twin=28)
+
+    # test plot scatter
+    artist = CPlotScatter(
+        plot_df=df, point_x="沪深300", point_y="中证500",
+        fig_name="test-plot-scatter", style="seaborn-v0_8-poster",
+        fig_save_dir=test_save_dir
+    )
+    artist.plot(title="test-scatter", title_size=32)
