@@ -168,6 +168,7 @@ class CNAV(object):
         self.cal_return_std()
         self.cal_hold_period_return()
         self.cal_annual_return(method=method)
+        self.cal_annual_volatility()
         self.cal_sharpe_ratio()
         self.cal_max_drawdown_scale()
         self.cal_calmar_ratio()
