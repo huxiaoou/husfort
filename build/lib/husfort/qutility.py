@@ -64,7 +64,7 @@ def make_twin_dir(twin_root_dir: str, src: str = ".") -> str:
     else:
         cwd = src.split("\\")[-1]
     dst_dir = os.path.join(twin_root_dir, cwd)
-    os.mkdir(dst_dir)
+    check_and_mkdir(dst_dir)
     return dst_dir
 
 
