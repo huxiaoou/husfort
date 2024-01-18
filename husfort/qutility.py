@@ -58,13 +58,12 @@ def check_and_remove_tree(dir_path: str):
     return 0
 
 
-def make_twin_dir(twin_root_dir: str, src: str = ".") -> str:
+def get_twin_dir(twin_root_dir: str, src: str = ".") -> str:
     if src == ".":
         cwd = os.getcwd().split("\\")[-1]
     else:
         cwd = src.split("\\")[-1]
     dst_dir = os.path.join(twin_root_dir, cwd)
-    check_and_mkdir(dst_dir)
     return dst_dir
 
 
