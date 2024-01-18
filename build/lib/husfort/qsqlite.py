@@ -291,7 +291,13 @@ class CQuickSqliteLib(object):
     def get_lib_writer(self, run_mode: str) -> CManagerLibWriter:
         lib_struct = self.get_lib_struct()
         lib_writer = CManagerLibWriter(self.lib_save_dir, lib_struct.lib_name)
-        lib_writer.initialize_table(lib_struct.table, run_mode == "O")
+        if run_mode.lower() in ["o", "overwrite"]:
+            lib_writer.initialize_table(lib_struct.table, remove_existence=True)
+        elif run_mode.lower() in ["a", "append"]:
+            lib_writer.initialize_table(lib_struct.table, remove_existence=False)
+        else:
+            print(f"... [ERR] run_mode = {run_mode}")
+            raise ValueError
         return lib_writer
 
     def get_lib_reader(self) -> CManagerLibReader:
