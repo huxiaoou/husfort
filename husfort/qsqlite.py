@@ -211,7 +211,7 @@ class CManagerLibWriter(CManagerLibReader):
         str_value_columns = [f"{k} {v}" for k, v in table.value_columns.items()]
         str_all_columns = ", ".join(str_primary_keys + str_value_columns)
         str_set_primary = f"PRIMARY KEY({', '.join(table.primary_keys)})"
-        cmd_sql_for_create_table = (f"CREATE TABLE IF NOT EXISTS"
+        cmd_sql_for_create_table = (f"CREATE TABLE IF NOT EXISTS "
                                     f"{table.table_name}({str_all_columns}, {str_set_primary})")
         self.cursor.execute(cmd_sql_for_create_table)
         if set_as_default:
