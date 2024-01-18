@@ -58,6 +58,13 @@ def check_and_remove_tree(dir_path: str):
     return 0
 
 
+def make_twin_dir(twin_root_dir: str):
+    cwd = os.getcwd().split("\\")[-1]
+    dst_dir = os.path.join(twin_root_dir, cwd)
+    os.mkdir(dst_dir)
+    return 0
+
+
 def hide_cursor():
     print("\033[?25l", end="")
     return 0
