@@ -321,8 +321,8 @@ class CLibFactor(CQuickSqliteLib):
 
 
 class CLibAvailableUniverse(CQuickSqliteLib):
-    def __init__(self, lib_save_dir: str):
-        super().__init__(lib_name=f"available_universe.db", lib_save_dir=lib_save_dir)
+    def __init__(self, lib_save_dir: str, lib_name: str = "available_universe.db"):
+        super().__init__(lib_name, lib_save_dir)
 
     def get_lib_struct(self) -> CLib1Tab1:
         return CLib1Tab1(
@@ -331,5 +331,53 @@ class CLibAvailableUniverse(CQuickSqliteLib):
                 "table_name": "available_universe",
                 "primary_keys": {"trade_date": "TEXT", "instrument": "TEXT"},
                 "value_columns": {"return": "REAL", "amount": "REAL"},
+            })
+        )
+
+
+class CLibMajorMinor(CQuickSqliteLib):
+    def __init__(self, instrument: str, lib_save_dir: str, lib_name: str = "major_minor.db"):
+        self.instrument = instrument
+        super().__init__(lib_name, lib_save_dir)
+
+    def get_lib_struct(self) -> CLib1Tab1:
+        return CLib1Tab1(
+            lib_name=self.lib_name,
+            table=CTable({
+                "table_name": self.instrument.replace(".", "_"),
+                "primary_keys": {"trade_date": "TEXT"},
+                "value_columns": {"n_contract": "TEXT", "d_contract": "TEXT"},
+            })
+        )
+
+
+class CLibMajorReturn(CQuickSqliteLib):
+    def __init__(self, instrument: str, lib_save_dir: str, lib_name: str = "major_return.db"):
+        self.instrument = instrument
+        super().__init__(lib_name, lib_save_dir)
+
+    def get_lib_struct(self) -> CLib1Tab1:
+        return CLib1Tab1(
+            lib_name=self.lib_name,
+            table=CTable({
+                "table_name": self.instrument.replace(".", "_"),
+                "primary_keys": {"trade_date": "TEXT"},
+                "value_columns": {
+                    "n_contract": "TEXT",
+                    "prev_close": "REAL",
+                    "open": "REAL",
+                    "high": "REAL",
+                    "low": "REAL",
+                    "close": "REAL",
+                    "volume": "INTEGER",
+                    "amount": "REAL",
+                    "oi": "INTEGER",
+                    "major_return": "REAL",
+                    "instru_idx": "REAL",
+                    "openC": "REAL",
+                    "highC": "REAL",
+                    "lowC": "REAL",
+                    "closeC": "REAL",
+                },
             })
         )
