@@ -34,6 +34,22 @@ class CCalendar(object):
             res.append(t_date)
         return res if ascending else sorted(res, reverse=True)
 
+    def shift_iter_dates(self, iter_dates: list[str], shift: int) -> list[str]:
+        """
+
+        :param iter_dates:
+        :param shift: > 0, in the future
+                      < 0, in the past
+        :return:
+        """
+        if shift >= 0:
+            new_dates = [self.get_next_date(iter_dates[-1], shift=s) for s in range(1, shift + 1)]
+            shift_dates = iter_dates[shift:] + new_dates
+        else:  # shift < 0
+            new_dates = [self.get_next_date(iter_dates[0], shift=s) for s in range(shift, 0)]
+            shift_dates = new_dates + iter_dates[:shift]
+        return shift_dates
+
     def get_sn(self, base_date: str):
         return self.__trade_dates.index(base_date)
 
@@ -71,6 +87,22 @@ class CCalendar(object):
     def convert_d10_to_d08(date: str):
         # "20210-01-01" -> "20210101"
         return date.replace("-", "")
+
+    @staticmethod
+    def get_next_month(month: str, s: int):
+        """
+
+        :param month: format = YYYYMM
+        :param s: > 0 in the future
+                  < 0 in the past
+        :return:
+        """
+        y, m = int(month[0:4]), int(month[4:6])
+        dy, dm = s // 12, s % 12
+        ny, nm = y + dy, m + dm
+        if nm > 12:
+            ny, nm = ny + 1, nm - 12
+        return f"{ny:04d}{nm:02d}"
 
 
 CONST_TS1, CONST_TS2 = "TS1", "TS2"
