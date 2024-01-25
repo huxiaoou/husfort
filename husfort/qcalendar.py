@@ -24,7 +24,7 @@ class CCalendar(object):
     def trade_dates(self) -> list[str]:
         return self.__trade_dates
 
-    def get_iter_list(self, bgn_date: str, stp_date: str, ascending: bool = True):
+    def get_iter_list(self, bgn_date: str, stp_date: str, ascending: bool = True) -> list[str]:
         res = []
         for t_date in self.__trade_dates:
             if t_date < bgn_date:
@@ -50,13 +50,13 @@ class CCalendar(object):
             shift_dates = new_dates + iter_dates[:shift]
         return shift_dates
 
-    def get_sn(self, base_date: str):
+    def get_sn(self, base_date: str) -> int:
         return self.__trade_dates.index(base_date)
 
-    def get_date(self, sn: int):
+    def get_date(self, sn: int) -> str:
         return self.__trade_dates[sn]
 
-    def get_next_date(self, this_date: str, shift: int = 1):
+    def get_next_date(self, this_date: str, shift: int = 1) -> str:
         """
 
         :param this_date:
@@ -79,17 +79,17 @@ class CCalendar(object):
         return (dt.datetime.strptime(trade_date, "%Y%m%d") + dt.timedelta(days=move_days)).strftime("%Y%m%d")
 
     @staticmethod
-    def convert_d08_to_d10(date: str):
+    def convert_d08_to_d10(date: str) -> str:
         # "202100101" -> "2021-01-01"
         return date[0:4] + "-" + date[4:6] + "-" + date[6:8]
 
     @staticmethod
-    def convert_d10_to_d08(date: str):
+    def convert_d10_to_d08(date: str) -> str:
         # "20210-01-01" -> "20210101"
         return date.replace("-", "")
 
     @staticmethod
-    def get_next_month(month: str, s: int):
+    def get_next_month(month: str, s: int) -> str:
         """
 
         :param month: format = YYYYMM
