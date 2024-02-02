@@ -1,6 +1,20 @@
 import os
 import shutil
 import re
+import time
+
+
+def qtimer(func):
+    # This function shows the execution time of
+    # the function object passed
+    def wrap_func(*args, **kwargs):
+        t1 = time.time()
+        result = func(*args, **kwargs)
+        t2 = time.time()
+        print(f"Function {func.__name__!r} executed in {(t2 - t1):.4f} seconds")
+        return result
+
+    return wrap_func
 
 
 def get_mix_string_len(mix_string: str, expected_len: int):
