@@ -2,6 +2,7 @@ import os
 import shutil
 import re
 import time
+import platform
 
 
 def get_mix_string_len(mix_string: str, expected_len: int):
@@ -60,10 +61,11 @@ def check_and_remove_tree(dir_path: str):
 
 
 def get_twin_dir(twin_root_dir: str, src: str = ".") -> str:
+    sep = "\\" if platform.system() == "Windows" else "/"
     if src == ".":
-        cwd = os.getcwd().split("\\")[-1]
+        cwd = os.getcwd().split(sep)[-1]
     else:
-        cwd = src.split("\\")[-1]
+        cwd = src.split(sep)[-1]
     dst_dir = os.path.join(twin_root_dir, cwd)
     return dst_dir
 
