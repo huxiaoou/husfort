@@ -5,7 +5,7 @@ from dataclasses import dataclass, field
 
 
 class CCalendar(object):
-    def __init__(self, calendar_path: os.path, header: int = 0):
+    def __init__(self, calendar_path: str, header: int = 0):
         if isinstance(header, int):
             calendar_df = pd.read_csv(calendar_path, dtype=str, header=header)
         else:
