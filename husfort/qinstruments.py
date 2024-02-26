@@ -7,7 +7,7 @@ from dataclasses import dataclass
 
 
 class CInstrumentInfoTable(object):
-    def __init__(self, instru_info_path: os.path, index_label: str = "instrumentId",
+    def __init__(self, instru_info_path: str, index_label: str = "instrumentId",
                  file_type: str = "EXCEL", sheet_name: str = "InstrumentInfo"):
         """
 
