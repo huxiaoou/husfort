@@ -593,7 +593,7 @@ def cal_multiple_complex_simulations(
     instru_info_tab = CInstrumentInfoTable(instru_info_path=instru_info_path, file_type="CSV", index_label="windCode")
     mgr_md = CManagerMarketData(universe=universe, market_data_dir=market_data_dir)
     mgr_major = CManagerMajor(universe=universe, major_minor_dir=major_minor_dir)
-    print(f"{dt.datetime.now()} [INF] prerequisite loaded...")
+    print(f"{dt.datetime.now()} [INF] prerequisite loaded ...")
 
     # Serialize
     signals: list[tuple[CPortfolio, CManagerSignal]] = []
