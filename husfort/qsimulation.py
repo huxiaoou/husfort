@@ -1,7 +1,11 @@
 import os
+import datetime as dt
+import multiprocessing as mp
 import numpy as np
 import pandas as pd
-from husfort.qsqlite import CManagerLibReader, CLibFactor, CLibAvailableUniverse
+from rich.progress import track
+from husfort.qutility import check_and_mkdir, qtimer
+from husfort.qsqlite import CLibFactor, CLibAvailableUniverse
 from husfort.qcalendar import CCalendar
 from husfort.qinstruments import (CInstrumentInfoTable, CPosKey, CContract,
                                   TOperation, TDirection,
@@ -29,46 +33,64 @@ class CManagerSignal(object):
 
         self.factor = factor
         self.universe: set = set(universe)
-        self.factor_lib: CManagerLibReader = CLibFactor(factor=factor, lib_save_dir=factors_dir).get_lib_reader()
-        self.available_universe_lib: CManagerLibReader = CLibAvailableUniverse(available_universe_dir).get_lib_reader()
+        self.__init__factor(factor=factor, factors_dir=factors_dir)
+        self.__init_available_universe(available_universe_dir=available_universe_dir)
 
-    def close(self):
-        self.factor_lib.close()
-        self.available_universe_lib.close()
+    def __init__factor(self, factor: str, factors_dir):
+        lib_reader = CLibFactor(factor=factor, lib_save_dir=factors_dir).get_lib_reader()
+        df = lib_reader.read(value_columns=["trade_date", "instrument", "value"])
+        df.rename(mapper={"value": self.factor}, axis=1, inplace=True)
+        lib_reader.close()
+        self.factor_lib: dict[str, pd.DataFrame] = {}
+        for (trade_date, trade_date_df) in df.groupby(by="trade_date"):
+            self.factor_lib[trade_date] = trade_date_df.drop(axis=1, labels=["trade_date"]).set_index("instrument")
         return 0
+
+    def __init_available_universe(self, available_universe_dir: str):
+        lib_reader = CLibAvailableUniverse(available_universe_dir).get_lib_reader()
+        df = lib_reader.read(value_columns=["trade_date", "instrument"])
+        lib_reader.close()
+        self.available_universe_lib: dict[str, list[str]] = {}
+        for (trade_date, trade_date_df) in df.groupby(by="trade_date"):
+            self.available_universe_lib[trade_date] = trade_date_df["instrument"].to_list()
+        return 0
+
+    def inquire_factor(self, trade_date: str) -> pd.DataFrame:
+        df = self.factor_lib.get(
+            trade_date,
+            pd.DataFrame(data={"factor": []}, index=pd.Index(name="instrument", data=[]))
+        )
+        return df
+
+    def inquire_available_universe(self, trade_date: str) -> list[str]:
+        return self.available_universe_lib.get(trade_date, [])
 
     def cal_signals(self, sig_date: str, mgr_md: CManagerMarketData, mgr_major: CManagerMajor,
                     instru_info_tab: CInstrumentInfoTable) -> list[CSignal]:
-        # --- load factors at signal date
-        factor_df = self.factor_lib.read_by_date(sig_date, value_columns=["instrument", "value"])
-        factor_df = factor_df.rename(mapper={"value": self.factor}, axis=1).set_index("instrument")
-
-        # --- load available universe
-        au_df = self.available_universe_lib.read_by_date(sig_date, value_columns=["instrument"])
-        au = au_df["instrument"].tolist()
+        # --- load factor and available universe
+        factor_df = self.inquire_factor(sig_date)
+        au = self.inquire_available_universe(sig_date)
 
         # --- signals
         selected_universe = [_ for _ in self.universe if (_ in factor_df.index) and (_ in au)]
         signal_df: pd.DataFrame = factor_df.loc[selected_universe]
-        signal_df = signal_df.loc[signal_df[self.factor].abs() > 0]
         if signal_df.empty:
             return []
-        else:
-            signals: list[CSignal] = []
-            for r in signal_df.itertuples():
-                instrument, w = getattr(r, "Index"), getattr(r, self.factor)
-                contract_id = mgr_major.inquiry_major_contract(instrument, sig_date)
-                price = mgr_md.inquiry_price_at_date(contract_id, instrument, sig_date)
-                if w > 0:
-                    contract = CContract.gen_from_contract_id(contract_id, instru_info_tab)
-                    signals.append(CSignal(contract, CONST_DIRECTION_LNG, price=price, weight=w))
-                elif w < 0:
-                    contract = CContract.gen_from_contract_id(contract_id, instru_info_tab)
-                    signals.append(CSignal(contract, CONST_DIRECTION_SRT, price=price, weight=-w))
-                else:
-                    print(f"w = {w} is illegal for {contract_id} at {sig_date}")
-                    raise ValueError
-            return signals
+
+        signals: list[CSignal] = []
+        for r in signal_df.itertuples():
+            instrument, w = getattr(r, "Index"), getattr(r, self.factor)
+            contract_id = mgr_major.inquiry_major_contract(instrument, sig_date)
+            price = mgr_md.inquiry_price_at_date(contract_id, instrument, sig_date)
+            if w > 0:
+                contract = CContract.gen_from_contract_id(contract_id, instru_info_tab)
+                signals.append(CSignal(contract, CONST_DIRECTION_LNG, price=price, weight=w))
+            elif w < 0:
+                contract = CContract.gen_from_contract_id(contract_id, instru_info_tab)
+                signals.append(CSignal(contract, CONST_DIRECTION_SRT, price=price, weight=-w))
+            else:  # w == 0
+                pass
+        return signals
 
 
 class CTrade(object):
@@ -342,7 +364,7 @@ class CPortfolio(object):
             return 0
 
     def __init__(self, pid: str, init_cash: float, cost_reservation: float, cost_rate: float,
-                 dir_pid: str, verbose: bool = True,
+                 dir_pid: str, save_trades_and_positions: bool = True,
                  record_trades_file_tmpl: str = "{}.trades.csv.gz",
                  snapshots_pos_file_tmpl: str = "{}.positions.csv.gz",
                  nav_daily_file_tmpl: str = "{}.nav_daily.csv.gz",
@@ -360,7 +382,7 @@ class CPortfolio(object):
 
         # save nav
         self.dir_pid: str = dir_pid
-        self.verbose: bool = verbose
+        self.save_trades_and_positions: bool = save_trades_and_positions
         self.record_trades_file_tmpl = record_trades_file_tmpl
         self.snapshots_pos_file_tmpl = snapshots_pos_file_tmpl
         self.nav_daily_file_tmpl = nav_daily_file_tmpl
@@ -481,7 +503,7 @@ class CPortfolio(object):
         return 0
 
     def _save_position(self) -> int:
-        if self.verbose:
+        if self.save_trades_and_positions:
             positions_df = pd.concat(self.simu_recorder.snapshots_pos_dfs, axis=0, ignore_index=True)
             positions_file = self.snapshots_pos_file_tmpl.format(self.pid)
             positions_path = os.path.join(self.dir_pid, positions_file)
@@ -489,7 +511,7 @@ class CPortfolio(object):
         return 0
 
     def _save_trades(self) -> int:
-        if self.verbose:
+        if self.save_trades_and_positions:
             record_trades_df = pd.concat(self.simu_recorder.record_trades_dfs, axis=0, ignore_index=True)
             record_trades_file = self.record_trades_file_tmpl.format(self.pid)
             record_trades_path = os.path.join(self.dir_pid, record_trades_file)
@@ -504,27 +526,26 @@ class CPortfolio(object):
         nav_daily_df.to_csv(nav_daily_path, index=False, float_format="%.2f", compression="gzip")
         return 0
 
-    def main(self, simu_bgn_date: str, simu_stp_date: str, start_delay: int, hold_period_n: int,
-             trade_price_type: str, settle_price_type: str,
-             calendar: CCalendar, instru_info_tab: CInstrumentInfoTable,
-             mgr_signal: CManagerSignal, mgr_md: CManagerMarketData, mgr_major: CManagerMajor):
+    def main(
+            self, simu_bgn_date: str, simu_stp_date: str,
+            calendar: CCalendar, instru_info_tab: CInstrumentInfoTable,
+            mgr_signal: CManagerSignal, mgr_md: CManagerMarketData, mgr_major: CManagerMajor,
+            trade_price_type: str = "close", settle_price_type: str = "close"
+    ):
         exe_dates = calendar.get_iter_list(bgn_date=simu_bgn_date, stp_date=simu_stp_date)
         base_date = calendar.get_next_date(exe_dates[0], -1)
         sig_dates = [base_date] + exe_dates[:-1]
-        for (ti, exe_date), sig_date in zip(enumerate(exe_dates), sig_dates):
+        iter_dates = list(zip(enumerate(exe_dates), sig_dates))
+        for (ti, exe_date), sig_date in track(iter_dates, description=f"Complex Simulation for {self.pid}"):
             # --- initialize
             self._initialize_daily(exe_date=exe_date)
 
             # --- check signal and major shift to create new trades ---
-            if (ti - start_delay) % hold_period_n == 0:  # ti is an execution date
-                # no major-shift check is necessary
-                # because signal would contain this information itself already
-                new_pos_df = mgr_signal.cal_signals(sig_date, mgr_md, mgr_major, instru_info_tab)
-                mgr_new_pos: dict[CPosKey, CPosition] = self._cal_target_position(new_pos_df)
-                new_trades = self._cal_trades_for_signal(mgr_tgt_pos=mgr_new_pos)
-            else:
-                # use this function to check for major-shift
-                new_trades = self._cal_trades_for_major(mgr_major=mgr_major, sig_date=sig_date)
+            # no major-shift check is necessary
+            # because signal would contain this information itself already
+            new_pos_df = mgr_signal.cal_signals(sig_date, mgr_md, mgr_major, instru_info_tab)
+            mgr_new_pos: dict[CPosKey, CPosition] = self._cal_target_position(new_pos_df)
+            new_trades = self._cal_trades_for_signal(mgr_tgt_pos=mgr_new_pos)
 
             # --- set price for new trade
             self._match_price_for_trades(new_trades, mgr_md, exe_date, trade_price_type)
@@ -545,12 +566,94 @@ class CPortfolio(object):
         return 0
 
 
+@qtimer
+def cal_multiple_complex_simulations(
+        signal_ids: list[str],
+        universe: list[str],
+        init_cash: float,
+        cost_rate: float,
+        simu_bgn_date: str,
+        simu_stp_date: str,
+        signals_dir: str,
+        simulations_save_dir: str,
+        calendar_path: str,
+        instru_info_path: str,
+        market_data_dir: str,
+        major_minor_dir: str,
+        available_universe_dir: str,
+        call_multiprocess: bool,
+        proc_qty: int = 0,
+        cost_reservation: float = 0,
+        trade_price_type: str = "close",
+        settle_price_type: str = "close",
+        save_trades_and_positions: bool = False,
+):
+    # shared
+    calendar = CCalendar(calendar_path)
+    instru_info_tab = CInstrumentInfoTable(instru_info_path=instru_info_path, file_type="CSV", index_label="windCode")
+    mgr_md = CManagerMarketData(universe=universe, market_data_dir=market_data_dir)
+    mgr_major = CManagerMajor(universe=universe, major_minor_dir=major_minor_dir)
+    print(f"{dt.datetime.now()} [INF] prerequisite loaded...")
+
+    # Serialize
+    signals: list[tuple[CPortfolio, CManagerSignal]] = []
+    for signal_id in signal_ids:
+        pid = f"{signal_id}"
+        dir_pid = os.path.join(simulations_save_dir, pid)
+        check_and_mkdir(dir_pid)
+        p = CPortfolio(
+            pid=pid,
+            init_cash=init_cash,
+            cost_reservation=cost_reservation,
+            cost_rate=cost_rate,
+            dir_pid=dir_pid,
+            save_trades_and_positions=save_trades_and_positions,
+        )
+        mgr_signal = CManagerSignal(
+            factor=signal_id,
+            universe=universe,
+            factors_dir=signals_dir,
+            available_universe_dir=available_universe_dir,
+        )
+        signals.append((p, mgr_signal))
+
+    if call_multiprocess:
+        pool = mp.Pool(processes=proc_qty) if proc_qty > 0 else mp.Pool()
+        for p, mgr_signal in signals:
+            pool.apply_async(
+                p.main,
+                kwds={
+                    "simu_bgn_date": simu_bgn_date,
+                    "simu_stp_date": simu_stp_date,
+                    "calendar": calendar,
+                    "instru_info_tab": instru_info_tab,
+                    "mgr_signal": mgr_signal,
+                    "mgr_md": mgr_md,
+                    "mgr_major": mgr_major,
+                    "trade_price_type": trade_price_type,
+                    "settle_price_type": settle_price_type,
+                },
+            )
+        pool.close()
+        pool.join()
+    else:
+        for p, mgr_signal in signals:
+            p.main(
+                simu_bgn_date=simu_bgn_date,
+                simu_stp_date=simu_stp_date,
+                calendar=calendar,
+                instru_info_tab=instru_info_tab,
+                mgr_signal=mgr_signal,
+                mgr_md=mgr_md,
+                mgr_major=mgr_major,
+                trade_price_type=trade_price_type,
+                settle_price_type=settle_price_type,
+            )
+    return 0
+
+
 if __name__ == "__main__":
-    import datetime as dt
-
-    t0 = dt.datetime.now()
-
-    test_universe = concerned_instruments_universe = [
+    test_universe = [
         "AU.SHF",
         "AG.SHF",
         "CU.SHF",
@@ -599,33 +702,28 @@ if __name__ == "__main__":
         "AP.CZC",
         "CJ.CZC",
     ]
-    test_bgn_date, test_stp_date = "20140701", "20240109"
-    test_calendar = CCalendar(r"E:\Deploy\Data\Calendar\cne_calendar.csv")
-    test_instru_info_tab = CInstrumentInfoTable(
-        instru_info_path=r"E:\Deploy\Data\Futures\InstrumentInfo3.csv", file_type="CSV",
-        index_label="windCode"
-    )
-    test_mgr_md = CManagerMarketData(
+    test_bgn_date, test_stp_date = "20140701", "20240226"
+    t_signals_dir = r"E:\Deploy\Data\ForProjects\cta3\signals\portfolios"
+    t_simulations_save_dir = r"E:\TMP"
+    t_calendar_path = r"E:\Deploy\Data\Calendar\cne_calendar.csv"
+    t_instru_info_path = r"E:\Deploy\Data\Futures\InstrumentInfo3.csv"
+    t_market_data_dir = r"E:\Deploy\Data\Futures\by_instrument\by_instru_md"
+    t_major_minor_dir = r"E:\Deploy\Data\Futures\by_instrument"
+    t_available_universe_dir = r"E:\Deploy\Data\ForProjects\cta3\available_universe"
+
+    cal_multiple_complex_simulations(
+        signal_ids=["ND", "NF"],
         universe=test_universe,
-        market_data_dir=r"E:\Deploy\Data\Futures\by_instrument\by_instru_md"
+        init_cash=10000000,
+        cost_rate=5e-4,
+        simu_bgn_date=test_bgn_date,
+        simu_stp_date=test_stp_date,
+        signals_dir=t_signals_dir,
+        simulations_save_dir=t_simulations_save_dir,
+        calendar_path=t_calendar_path,
+        instru_info_path=t_instru_info_path,
+        market_data_dir=t_market_data_dir,
+        major_minor_dir=t_major_minor_dir,
+        available_universe_dir=t_available_universe_dir,
+        call_multiprocess=True,
     )
-    test_mgr_major = CManagerMajor(universe=test_universe, major_minor_dir=r"E:\Deploy\Data\Futures\by_instrument")
-    test_mgr_signal = CManagerSignal(
-        factor="ND", universe=test_universe,
-        factors_dir=r"E:\Deploy\Data\ForProjects\cta3\signals\portfolios",
-        available_universe_dir=r"E:\Deploy\Data\ForProjects\cta3\available_universe"
-    )
-    test_portfolio = CPortfolio(
-        pid="test_simu_open", init_cash=10000000,
-        cost_reservation=0.0, cost_rate=5e-4,
-        dir_pid=r"E:\TMP"
-    )
-    test_portfolio.main(
-        simu_bgn_date=test_bgn_date, simu_stp_date=test_stp_date, start_delay=0, hold_period_n=1,
-        trade_price_type="open", settle_price_type="close",
-        calendar=test_calendar, instru_info_tab=test_instru_info_tab,
-        mgr_signal=test_mgr_signal, mgr_md=test_mgr_md, mgr_major=test_mgr_major,
-    )
-    test_mgr_signal.close()
-    t1 = dt.datetime.now()
-    print(f"total time consuming {(t1 - t0).total_seconds():.2f} seconds")
