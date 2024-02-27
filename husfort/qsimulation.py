@@ -582,7 +582,7 @@ def cal_multiple_complex_simulations(
         major_minor_dir: str,
         available_universe_dir: str,
         call_multiprocess: bool,
-        proc_qty: int = 0,
+        proc_qty: int = None,
         cost_reservation: float = 0,
         trade_price_type: str = "close",
         settle_price_type: str = "close",
@@ -618,7 +618,7 @@ def cal_multiple_complex_simulations(
         signals.append((p, mgr_signal))
 
     if call_multiprocess:
-        pool = mp.Pool(processes=proc_qty) if proc_qty > 0 else mp.Pool()
+        pool = mp.Pool(processes=proc_qty)
         for p, mgr_signal in signals:
             pool.apply_async(
                 p.main,
