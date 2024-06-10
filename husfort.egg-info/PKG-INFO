@@ -22,12 +22,19 @@ This project is designed to provide some highly frequently used tools in daily q
 
 ---
 
-## Build and Install
+### Old pip version
 
 ```powershell
 python setup.py build
 python setup.py sdist
 pip install .\dist\husfort-1.0.0.tar.gz
+```
+
+### New pip version
+
+```powershell
+python setup.py sdist bdist_wheel
+pip install .\dist\husfort-1.0.0-py3-none-any.whl
 ```
 
 ## Module Description
