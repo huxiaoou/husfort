@@ -1,8 +1,9 @@
 import os
 import shutil
 import re
-import time
-import platform
+import functools
+import datetime as dt
+from itertools import islice
 
 
 def get_mix_string_len(mix_string: str, expected_len: int):
@@ -21,7 +22,7 @@ def get_mix_string_len(mix_string: str, expected_len: int):
 
 
 def SetFontColor(c):
-    def inner(s: str):
+    def inner(s: str | int | float | dt.datetime):
         return f"\033[{c}m{s}\033[0m"
 
     return inner
@@ -36,15 +37,23 @@ SFC = SetFontColor(c="0;36;40")  # Cyan
 SFW = SetFontColor(c="0;37;40")  # White
 
 
-def check_and_mkdir(dir_path: str):
-    if not os.path.exists(dir_path):
+def check_and_mkdir(dir_path: str, verbose: bool = False):
+    try:
         os.mkdir(dir_path)
+    except FileExistsError:
+        pass
+    if verbose:
+        print(f"[INF] Making directory {SFG(dir_path)}")
     return 0
 
 
-def check_and_makedirs(dir_path: str):
-    if not os.path.exists(dir_path):
+def check_and_makedirs(dir_path: str, verbose: bool = False):
+    try:
         os.makedirs(dir_path)
+    except FileExistsError:
+        pass
+    if verbose:
+        print(f"[INF] Making directory {SFG(dir_path)}")
     return 0
 
 
@@ -60,14 +69,20 @@ def check_and_remove_tree(dir_path: str):
     return 0
 
 
-def get_twin_dir(twin_root_dir: str, src: str = ".") -> str:
-    sep = "\\" if platform.system() == "Windows" else "/"
-    if src == ".":
-        cwd = os.getcwd().split(sep)[-1]
-    else:
-        cwd = src.split(sep)[-1]
-    dst_dir = os.path.join(twin_root_dir, cwd)
-    return dst_dir
+def qtimer(func):
+    # This function shows the execution time of
+    # the function object passed
+    @functools.wraps(func)  # use this statement to make this function compatible within custom classes
+    def wrap_func(*args, **kwargs):
+        t1 = dt.datetime.now()
+        print(f"[INF] {SFG(t1)} Begin to execute Function {SFG(f'{func.__name__!r}')}")
+        result = func(*args, **kwargs)
+        t2 = dt.datetime.now()
+        duration = (t2 - t1).total_seconds()
+        print(f"[INF] {SFG(t2)} Function {SFG(f'{func.__name__!r}')} executed in {SFG(f'{duration:.4f}')} seconds")
+        return result
+
+    return wrap_func
 
 
 def hide_cursor():
@@ -80,17 +95,16 @@ def show_cursor():
     return 0
 
 
-def qtimer(func):
-    # This function shows the execution time of
-    # the function object passed
-    def wrap_func(*args, **kwargs):
-        t1 = time.time()
-        result = func(*args, **kwargs)
-        t2 = time.time()
-        print(f"Function {SFG(f'{func.__name__!r}')} executed in {SFG(f'{(t2 - t1):.4f}')} seconds")
-        return result
+def error_handler(error):
+    print(f"{SFR('Error')}: {error}", flush=True)
 
-    return wrap_func
+
+def batched(iterable, batch_size: int):
+    i = iter(iterable)
+    piece = list(islice(i, batch_size))
+    while piece:
+        yield piece
+        piece = list(islice(i, batch_size))
 
 
 if __name__ == "__main__":
