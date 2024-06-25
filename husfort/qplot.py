@@ -193,6 +193,7 @@ class CPlotFromDataFrame(CPlot):
             xlabel_size: int = 12,
             xtick_label_size: int = 12,
             xtick_label_rotation: int = 0,
+            xtick_direction: str = "in",
             xgrid_visible: bool = False,
     ):
         other_kwargs = {
