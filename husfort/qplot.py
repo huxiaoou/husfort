@@ -4,20 +4,27 @@ import pandas as pd
 import matplotlib.pyplot as plt
 
 plt.rcParams["font.sans-serif"] = ["SimHei"]
-plt.rcParams["axes.unicode_minus"] = (
-    False  # make compatible with negative or minus sign
-)
+plt.rcParams["axes.unicode_minus"] = False  # make compatible with negative or minus sign
 
 
 class CPlot(object):
     def __init__(
-        self,
-        fig_name: str,
-        fig_save_dir: str,
-        fig_save_type: str = "pdf",
-        fig_size: tuple = (16, 9),
-        style: str = "seaborn-v0_8-poster",
+            self,
+            fig_name: str,
+            fig_save_dir: str,
+            fig_save_type: str = "pdf",
+            fig_size: tuple = (16, 9),
+            style: str = "seaborn-v0_8-poster",
     ):
+        """
+
+        :param fig_name:
+        :param fig_save_dir:
+        :param fig_save_type:
+        :param fig_size:
+        :param style: more styles comes from
+                      https://matplotlib.org/3.7.5/gallery/style_sheets/style_sheets_reference.html
+        """
         self.fig_name = fig_name
         self.fig_save_dir = fig_save_dir
         self.fig_save_type = fig_save_type
@@ -56,15 +63,16 @@ class CPlot(object):
         return 0
 
     def set_axis_x(
-        self,
-        xlim: tuple = (None, None),
-        xtick_spread: float = None,
-        xtick_count: int = 10,
-        xlabel: str = None,
-        xlabel_size: int = 12,
-        xtick_label_size: int = 12,
-        xtick_label_rotation: int = 0,
-        xgrid_visible: bool = False,
+            self,
+            xlim: tuple = (None, None),
+            xtick_spread: float = None,
+            xtick_count: int = 10,
+            xlabel: str = None,
+            xlabel_size: int = 12,
+            xtick_label_size: int = 12,
+            xtick_label_rotation: int = 0,
+            xtick_direction: str = "in",
+            xgrid_visible: bool = False,
     ):
         if xlim != (None, None):
             x_range = xlim[1] - xlim[0]
@@ -82,21 +90,25 @@ class CPlot(object):
         self.ax.set_xlabel(xlabel, fontsize=xlabel_size)
         self.ax.set_xlim(xlim[0], xlim[1])
         self.ax.tick_params(
-            axis="x", labelsize=xtick_label_size, rotation=xtick_label_rotation
+            axis="x",
+            labelsize=xtick_label_size,
+            rotation=xtick_label_rotation,
+            direction=xtick_direction,
         )
         self.ax.grid(visible=xgrid_visible, axis="x")
         return 0
 
     def set_axis_y(
-        self,
-        ylim: tuple = (None, None),
-        ytick_spread: float = None,
-        ytick_count: int = 10,
-        ylabel: str = None,
-        ylabel_size: int = 12,
-        ytick_label_size: int = 12,
-        ytick_label_rotation: int = 0,
-        ygrid_visible: bool = False,
+            self,
+            ylim: tuple = (None, None),
+            ytick_spread: float = None,
+            ytick_count: int = 10,
+            ylabel: str = None,
+            ylabel_size: int = 12,
+            ytick_label_size: int = 12,
+            ytick_label_rotation: int = 0,
+            ytick_direction: str = "in",
+            ygrid_visible: bool = False,
     ):
         if ylim != (None, None):
             y_range = ylim[1] - ylim[0]
@@ -114,9 +126,16 @@ class CPlot(object):
         self.ax.set_ylabel(ylabel, fontsize=ylabel_size)
         self.ax.set_ylim(ylim[0], ylim[1])
         self.ax.tick_params(
-            axis="y", labelsize=ytick_label_size, rotation=ytick_label_rotation
+            axis="y",
+            labelsize=ytick_label_size,
+            rotation=ytick_label_rotation,
+            direction=ytick_direction,
         )
         self.ax.grid(visible=ygrid_visible, axis="y")
+        return 0
+
+    def add_text(self, x: float | int, y: float | int, text: str, size: int = 12):
+        self.ax.text(x, y, s=text, fontdict={"size": size})
         return 0
 
     def save(self):
@@ -140,14 +159,14 @@ class CPlot(object):
 
 class CPlotFromDataFrame(CPlot):
     def __init__(
-        self,
-        plot_data: pd.DataFrame,
-        fig_name: str,
-        fig_save_dir: str,
-        fig_save_type: str = "pdf",
-        fig_size: tuple = (16, 9),
-        style: str = "seaborn-v0_8-poster",
-        colormap: str = None,
+            self,
+            plot_data: pd.DataFrame,
+            fig_name: str,
+            fig_save_dir: str,
+            fig_save_type: str = "pdf",
+            fig_size: tuple = (16, 9),
+            style: str = "seaborn-v0_8-poster",
+            colormap: str = None,
     ):
         """
 
@@ -166,15 +185,15 @@ class CPlotFromDataFrame(CPlot):
         )
 
     def set_axis_x(
-        self,
-        xlim: tuple = (None, None),
-        xtick_spread: float = None,
-        xtick_count: int = 10,
-        xlabel: str = None,
-        xlabel_size: int = 12,
-        xtick_label_size: int = 12,
-        xtick_label_rotation: int = 0,
-        xgrid_visible: bool = False,
+            self,
+            xlim: tuple = (None, None),
+            xtick_spread: float = None,
+            xtick_count: int = 10,
+            xlabel: str = None,
+            xlabel_size: int = 12,
+            xtick_label_size: int = 12,
+            xtick_label_rotation: int = 0,
+            xgrid_visible: bool = False,
     ):
         other_kwargs = {
             "xtick_spread": xtick_spread,
@@ -193,20 +212,33 @@ class CPlotFromDataFrame(CPlot):
         self.ax.set_xticklabels(xticklabels)
         return 0
 
+    def add_vlines_from_index(self, vlines_index: list, color: str = "r", style: str = "dashed"):
+        if vlines_index:
+            xlocs = [self.plot_data.index.get_loc(z) for z in vlines_index]
+            ymin, ymax = self.ax.get_ylim()
+            self.ax.vlines(xlocs, ymin=ymin, ymax=ymax, colors=color, linestyles=style)
+        return 0
+
+    def add_hlines_from_value(self, hlines_value: list, color: str = "r", style: str = "dashed"):
+        if hlines_value:
+            xmin, xmax = self.ax.get_xlim()
+            self.ax.hlines(hlines_value, xmin=xmin, xmax=xmax, colors=color, linestyles=style)
+        return 0
+
 
 class CPlotLines(CPlotFromDataFrame):
     def __init__(
-        self,
-        plot_data: pd.DataFrame,
-        fig_name: str,
-        fig_save_dir: str,
-        fig_save_type: str = "pdf",
-        fig_size: tuple = (16, 9),
-        style: str = "seaborn-v0_8-poster",
-        colormap: str = None,
-        line_width: float = 2,
-        line_style: list = None,
-        line_color: list = None,
+            self,
+            plot_data: pd.DataFrame,
+            fig_name: str,
+            fig_save_dir: str,
+            fig_save_type: str = "pdf",
+            fig_size: tuple = (16, 9),
+            style: str = "seaborn-v0_8-poster",
+            colormap: str = None,
+            line_width: float = 2,
+            line_style: list = None,
+            line_color: list = None,
     ):
         """
 
@@ -263,12 +295,26 @@ class CPlotLines(CPlotFromDataFrame):
         )
 
     def plot(self):
-        self.plot_data.plot.line(
-            ax=self.ax,
-            lw=self.line_width,
-            style=self.line_style or "-",
-            color=self.line_color or self.colormap,
-        )
+        if self.line_color:
+            self.plot_data.plot.line(
+                ax=self.ax,
+                lw=self.line_width,
+                style=self.line_style or "-",
+                color=self.line_color,
+            )
+        elif self.colormap:
+            self.plot_data.plot.line(
+                ax=self.ax,
+                lw=self.line_width,
+                style=self.line_style or "-",
+                colormap=self.colormap,
+            )
+        else:
+            self.plot_data.plot.line(
+                ax=self.ax,
+                lw=self.line_width,
+                style=self.line_style or "-",
+            )
         return 0
 
 

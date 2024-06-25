@@ -44,8 +44,7 @@ class CNAV(object):
             self.rtn_srs: pd.Series = input_srs
             self.nav_srs: pd.Series = (input_srs + 1).cumprod()
         else:
-            print(f"input type = {input_type} is not a legal value, please check again.")
-            raise ValueError
+            raise ValueError(f"input type = {input_type} is illegal, please check again.")
 
         self.obs: int = len(input_srs)
 
