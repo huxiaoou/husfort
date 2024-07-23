@@ -13,7 +13,7 @@ class CPlot(object):
             fig_name: str,
             fig_save_dir: str,
             fig_save_type: str = "pdf",
-            fig_size: tuple = (16, 9),
+            fig_size: tuple[float, float] = (16, 9),
             style: str = "seaborn-v0_8-poster",
     ):
         """
@@ -164,7 +164,7 @@ class CPlotFromDataFrame(CPlot):
             fig_name: str,
             fig_save_dir: str,
             fig_save_type: str = "pdf",
-            fig_size: tuple = (16, 9),
+            fig_size: tuple[float, float] = (16, 9),
             style: str = "seaborn-v0_8-poster",
             colormap: str = None,
     ):
@@ -195,6 +195,8 @@ class CPlotFromDataFrame(CPlot):
             xtick_label_rotation: int = 0,
             xtick_direction: str = "in",
             xgrid_visible: bool = False,
+            update_xticklabels: bool = True,
+            using_index_as_x: bool = True,
     ):
         other_kwargs = {
             "xtick_spread": xtick_spread,
@@ -209,8 +211,47 @@ class CPlotFromDataFrame(CPlot):
             super().set_axis_x(xlim=(0, self.data_len), **other_kwargs)
         else:
             super().set_axis_x(xlim=xlim, **other_kwargs)
-        xticklabels = self.plot_data.index[self.ax.get_xticks().astype(int)]
-        self.ax.set_xticklabels(xticklabels)
+        if update_xticklabels:
+            if using_index_as_x:
+                xticklabels = self.plot_data.index[self.ax.get_xticks().astype(int)]
+            else:
+                xticklabels = self.plot_data.columns[self.ax.get_xticks().astype(int)]
+            self.ax.set_xticklabels(xticklabels)
+        return 0
+
+    def set_axis_y(
+            self,
+            ylim: tuple = (None, None),
+            ytick_spread: float = None,
+            ytick_count: int = 10,
+            ylabel: str = None,
+            ylabel_size: int = 12,
+            ytick_label_size: int = 12,
+            ytick_label_rotation: int = 0,
+            ytick_direction: str = "in",
+            ygrid_visible: bool = False,
+            update_yticklabels: bool = True,
+            using_columns_as_y: bool = True,
+    ):
+        other_kwargs = {
+            "ytick_spread": ytick_spread,
+            "ytick_count": ytick_count,
+            "ylabel": ylabel,
+            "ylabel_size": ylabel_size,
+            "ytick_label_size": ytick_label_size,
+            "ytick_label_rotation": ytick_label_rotation,
+            "ygrid_visible": ygrid_visible,
+        }
+        if ylim == (None, None):
+            super().set_axis_y(ylim=(0, self.data_len), **other_kwargs)
+        else:
+            super().set_axis_y(ylim=ylim, **other_kwargs)
+        if update_yticklabels:
+            if using_columns_as_y:
+                yticklabels = self.plot_data.columns[self.ax.get_yticks().astype(int)]
+            else:
+                yticklabels = self.plot_data.index[self.ax.get_yticks().astype(int)]
+            self.ax.set_yticklabels(yticklabels)
         return 0
 
     def add_vlines_from_index(self, vlines_index: list, color: str = "r", style: str = "dashed"):
@@ -234,7 +275,7 @@ class CPlotLines(CPlotFromDataFrame):
             fig_name: str,
             fig_save_dir: str,
             fig_save_type: str = "pdf",
-            fig_size: tuple = (16, 9),
+            fig_size: tuple[float, float] = (16, 9),
             style: str = "seaborn-v0_8-poster",
             colormap: str = None,
             line_width: float = 2,
@@ -319,34 +360,72 @@ class CPlotLines(CPlotFromDataFrame):
         return 0
 
 
-if __name__ == "__main__":
-    from random import randint
+class CPlotBars(CPlotFromDataFrame):
+    def __init__(self,
+                 bar_color: list = None,
+                 bar_width: float = 0.8,
+                 bar_alpha: float = 1.0,
+                 stacked: bool = False,
+                 align: str = "edge",
+                 **kwargs):
+        """
 
-    test_size = 60
-    test_save_dir = r"E:\TMP"
+        :param bar_color:
+        :param bar_width:
+        :param bar_alpha:
+        :param stacked:
+        :param align: {'center', 'edge'}, default: 'edge'
+        :param kwargs:
+        """
+        self.bar_color = bar_color
+        self.bar_width = bar_width
+        self.bar_alpha = bar_alpha
+        self.stacked = stacked
+        self.align = align
+        super().__init__(**kwargs)
 
-    data = pd.DataFrame(
-        {
-            "T": [str(_) for _ in range(2014, 2014 + test_size)],
-            "x": [randint(95, 105) for _ in range(test_size)],
-            "y": [randint(95, 105) for _ in range(test_size)],
-        }
-    ).set_index("T")
-    my_artist = CPlotLines(
-        plot_data=data,
-        fig_name="Test",
-        fig_save_dir=test_save_dir,
-        line_width=4,
-        line_style=["-", "-."],
-        line_color=["#DC143C", "#228B22"],
-    )
-    my_artist.plot()
-    my_artist.set_legend(size=16, loc="upper left")
-    my_artist.set_axis_x(
-        xtick_count=10,
-        xlabel="Test-XLabels",
-        xtick_label_size=24,
-        xtick_label_rotation=45,
-    )
-    my_artist.set_title(title="Test-Tile", size=48, loc="left")
-    my_artist.save_and_close()
+
+class CPlotBarsV(CPlotBars):
+    def plot(self):
+        if self.bar_color:
+            self.plot_data.plot.bar(
+                ax=self.ax,
+                color=self.bar_color,
+                width=self.bar_width,
+                alpha=self.bar_alpha,
+                stacked=self.stacked,
+                align=self.align,
+            )
+        else:
+            self.plot_data.plot.bar(
+                ax=self.ax,
+                colormap=self.colormap,
+                width=self.bar_width,
+                alpha=self.bar_alpha,
+                stacked=self.stacked,
+                align=self.align,
+            )
+        return 0
+
+
+class CPlotBarsH(CPlotBars):
+    def plot(self):
+        if self.bar_color:
+            self.plot_data.plot.barh(
+                ax=self.ax,
+                color=self.bar_color,
+                width=self.bar_width,
+                alpha=self.bar_alpha,
+                stacked=self.stacked,
+                align=self.align,
+            )
+        else:
+            self.plot_data.plot.barh(
+                ax=self.ax,
+                colormap=self.colormap,
+                width=self.bar_width,
+                alpha=self.bar_alpha,
+                stacked=self.stacked,
+                align=self.align,
+            )
+        return 0
