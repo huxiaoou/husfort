@@ -1,11 +1,52 @@
 import numpy as np
 import pandas as pd
+from dataclasses import dataclass
 
 '''
 created @ 2024-01-05
 0.  define a class to evaluate the performance of some portfolio
 1.  this class provide methods to calculate some frequently used index
 '''
+
+
+@dataclass
+class CIndicatorsGeneric:
+    display_scale: int | float
+    display_fmt: str  # like ".2f", "6.3f", "12d", "s"
+    avlb: bool = False
+
+    def display(self) -> str:
+        raise NotImplementedError
+
+
+@dataclass
+class CIndicators(CIndicatorsGeneric):
+    val: float | int = 0
+
+    def display(self) -> str:
+        return f"{self.val * self.display_scale:{self.display_fmt}}"
+
+
+@dataclass
+class CIndicatorsWithSeries(CIndicators):
+    srs: pd.Series = None
+    idx: int | str = None
+
+    def displayIdx(self) -> str:
+        if isinstance(self.idx, int):
+            return f"{self.idx:d}"
+        elif isinstance(self.idx, str):
+            return f"{self.idx:s}"
+        else:
+            raise ValueError(f"wrong type for self.idx")
+
+
+@dataclass
+class CIndicatorsWithDict(CIndicatorsGeneric):
+    val: dict[str, float] = None
+
+    def display(self) -> str:
+        return ",".join([f"{k}={v * self.display_scale:{self.display_fmt}}" for k, v in self.val.items()])
 
 
 class CNAV(object):
@@ -48,78 +89,91 @@ class CNAV(object):
 
         self.obs: int = len(input_srs)
 
-        # frequently used performance index
+        # frequently used performance indicators
         # primary
-        self.return_mean: float = 0
-        self.return_std: float = 0
-        self.hold_period_return: float = 0
-        self.annual_return: float = 0
-        self.annual_volatility: float = 0
-        self.sharpe_ratio: float = 0
-        self.calmar_ratio: float = 0
-        self.value_at_risks: dict = {}
+        self.return_mean: CIndicators = CIndicators(ret_scale_display, display_fmt=".3f")
+        self.return_std: CIndicators = CIndicators(ret_scale_display, display_fmt=".3f")
+        self.hold_period_return: CIndicators = CIndicators(ret_scale_display, display_fmt=".2f")
+        self.annual_return: CIndicators = CIndicators(ret_scale_display, display_fmt=".2f")
+        self.annual_volatility: CIndicators = CIndicators(ret_scale_display, display_fmt=".2f")
+        self.sharpe_ratio: CIndicators = CIndicators(1, display_fmt=".3f")
+        self.calmar_ratio: CIndicators = CIndicators(1, display_fmt=".3f")
+        self.value_at_risks: CIndicatorsWithDict = CIndicatorsWithDict(ret_scale_display, display_fmt=".3f")
 
-        # secondary - A max drawdown scale
-        self.max_drawdown_scale: float = 0  # a non-negative float, multiplied by RETURN_SCALE
-        self.max_drawdown_scale_idx: str = ""
-        self.drawdown_scale_srs: pd.Series = pd.Series(data=0.0, index=self.nav_srs.index)
-
-        # secondary - B max drawdown duration
-        self.max_drawdown_duration: int = 0  # a non-negative int, stands for the duration of drawdown
-        self.max_drawdown_duration_idx: str = ""
-        self.drawdown_duration_srs: pd.Series = pd.Series(data=0, index=self.nav_srs.index)
-
-        # secondary - C max recover duration
-        self.max_recover_duration: int = 0
-        self.max_recover_duration_idx: str = ""
-        self.recover_duration_srs: pd.Series = pd.Series(data=0, index=self.nav_srs.index)
+        # secondary
+        self.max_drawdown_scale: CIndicatorsWithSeries = CIndicatorsWithSeries(
+            display_scale=ret_scale_display, display_fmt=".3f", srs=pd.Series(index=self.nav_srs.index),
+        )
+        self.longest_drawdown_duration: CIndicatorsWithSeries = CIndicatorsWithSeries(
+            display_scale=1, display_fmt="d", srs=pd.Series(data=0, index=self.nav_srs.index),
+        )
+        self.longest_recover_duration: CIndicatorsWithSeries = CIndicatorsWithSeries(
+            display_scale=1, display_fmt="d", srs=pd.Series(data=0, index=self.nav_srs.index),
+        )
 
     def cal_return_mean(self):
-        self.return_mean = self.rtn_srs.mean()
+        if not self.return_mean.avlb:
+            self.return_mean.val = self.rtn_srs.mean()
+            self.return_mean.avlb = True
         return 0
 
     def cal_return_std(self):
-        self.return_std = self.rtn_srs.std()
+        if not self.return_std.avlb:
+            self.return_std.val = self.rtn_srs.std()
+            self.return_std.avlb = True
         return 0
 
     def cal_hold_period_return(self):
-        self.hold_period_return = self.nav_srs.iloc[-1] - 1
-        return 0
-
-    def cal_annual_volatility(self):
-        self.annual_volatility = self.rtn_srs.std() * np.sqrt(self.annual_factor)
+        if not self.hold_period_return.avlb:
+            self.hold_period_return.val = self.nav_srs.iloc[-1] - 1
+            self.hold_period_return.avlb = True
         return 0
 
     def cal_annual_return(self, method: str = "linear"):
-        if method.lower() == "linear":
-            self.annual_return = self.rtn_srs.mean() * self.annual_factor
-        elif method.lower() == "compound":
-            self.annual_return = np.power(self.nav_srs.iloc[-1], self.annual_factor / self.obs) - 1
-        else:
-            print(f"method = {method} is not a legal option")
-            raise ValueError
+        if not self.annual_return.avlb:
+            if method.lower() == "linear":
+                self.annual_return.val = self.rtn_srs.mean() * self.annual_factor
+            elif method.lower() == "compound":
+                self.annual_return.val = np.power(self.nav_srs.iloc[-1], self.annual_factor / self.obs) - 1
+            else:
+                raise ValueError(f"method = {method} is not a legal option")
+            self.annual_return.avlb = True
+        return 0
+
+    def cal_annual_volatility(self):
+        if not self.annual_volatility.avlb:
+            self.annual_volatility.val = self.rtn_srs.std() * np.sqrt(self.annual_factor)
+            self.annual_volatility.avlb = True
         return 0
 
     def cal_sharpe_ratio(self):
-        diff_srs = self.rtn_srs - self.annual_rf_rate / self.annual_factor
-        mu = diff_srs.mean()
-        sd = diff_srs.std()
-        self.sharpe_ratio = mu / sd * np.sqrt(self.annual_factor)
+        if not self.sharpe_ratio.avlb:
+            diff_srs = self.rtn_srs - self.annual_rf_rate / self.annual_factor
+            mu = diff_srs.mean()
+            sd = diff_srs.std()
+            self.sharpe_ratio.val = mu / sd * np.sqrt(self.annual_factor)
+            self.sharpe_ratio.avlb = True
         return 0
 
     def cal_max_drawdown_scale(self):
-        self.drawdown_scale_srs: pd.Series = (1 - self.nav_srs / self.nav_srs.cummax())
-        self.max_drawdown_scale = self.drawdown_scale_srs.max()
-        self.max_drawdown_scale_idx = self.drawdown_scale_srs.idxmax()
+        if not self.max_drawdown_scale.avlb:
+            self.max_drawdown_scale.srs = (1 - self.nav_srs / self.nav_srs.cummax())
+            self.max_drawdown_scale.val = self.max_drawdown_scale.srs.max()
+            self.max_drawdown_scale.idx = self.max_drawdown_scale.srs.idxmax()
+            self.max_drawdown_scale.avlb = True
         return 0
 
     def cal_calmar_ratio(self):
-        self.cal_annual_return()
-        self.cal_max_drawdown_scale()
-        self.calmar_ratio = self.annual_return / self.max_drawdown_scale
+        if not self.calmar_ratio.avlb:
+            self.cal_annual_return()
+            self.cal_max_drawdown_scale()
+            self.calmar_ratio.val = self.annual_return.val / self.max_drawdown_scale.val
+            self.calmar_ratio.avlb = True
         return 0
 
-    def cal_max_drawdown_duration(self):
+    def cal_longest_drawdown_duration(self):
+        if self.longest_drawdown_duration.avlb:
+            return 0
         prev_high = self.nav_srs.iloc[0]
         prev_high_loc = 0
         prev_drawdown_scale = 0.0
@@ -129,38 +183,52 @@ class CNAV(object):
                 prev_high = nav_i
                 prev_high_loc = i
                 prev_drawdown_scale = 0
-            drawdown_scale = 1 - nav_i / prev_high
+            drawdown_scale = 1 - nav_i / prev_high  # type:ignore
             if drawdown_scale > prev_drawdown_scale:
                 prev_drawdown_scale = drawdown_scale
                 drawdown_loc = i
-            self.drawdown_duration_srs.iloc[i] = drawdown_loc - prev_high_loc
-        self.max_drawdown_duration = self.drawdown_duration_srs.max()
-        self.max_drawdown_duration_idx = self.drawdown_duration_srs.idxmax()
+            self.longest_drawdown_duration.srs.iloc[i] = drawdown_loc - prev_high_loc
+        self.longest_drawdown_duration.val = self.longest_drawdown_duration.srs.max()
+        self.longest_drawdown_duration.idx = self.longest_drawdown_duration.srs.idxmax()
+        self.longest_drawdown_duration.avlb = True
         return 0
 
-    def cal_max_recover_duration(self):
+    def cal_longest_recover_duration(self):
+        if self.longest_recover_duration.avlb:
+            return 0
         prev_high = self.nav_srs.iloc[0]
         prev_high_loc = 0
         for i, nav_i in enumerate(self.nav_srs):
             if nav_i > prev_high:
-                self.recover_duration_srs.iloc[i] = 0
+                self.longest_recover_duration.srs.iloc[i] = 0
                 prev_high = nav_i
                 prev_high_loc = i
             else:
-                self.recover_duration_srs.iloc[i] = i - prev_high_loc
-        self.max_recover_duration = self.recover_duration_srs.max()
-        self.max_recover_duration_idx = self.recover_duration_srs.idxmax()
-        return
+                self.longest_recover_duration.srs.iloc[i] = i - prev_high_loc
+        self.longest_recover_duration.val = self.longest_recover_duration.srs.max()
+        self.longest_recover_duration.idx = self.longest_recover_duration.srs.idxmax()
+        self.longest_recover_duration.avlb = True
+        return 0
 
-    def cal_value_at_risk(self, qs: tuple[int]):
-        self.value_at_risks.update({f"q{q:02d}": np.percentile(self.rtn_srs, q) for q in qs})
+    def cal_value_at_risk(self, qs: tuple[int, ...]):
+        if (not self.value_at_risks.avlb) and qs:
+            self.value_at_risks.val = {f"q{q:02d}": np.percentile(self.rtn_srs, q) for q in qs}
+            self.value_at_risks.avlb = True
+        return 0
 
-    def cal_all_indicators(self, method: str = "linear", qs: tuple[int] = ()):
+    def cal_all_indicators(self, method: str = "linear",
+                           excluded: tuple[str, ...] = (),
+                           qs: tuple[int, ...] = ()):
         """
 
         :param method: "linear" or "compound"
+        :param excluded: indicators in this tuple will not be calculated, only
+                         ("ldd", "lrd", "var")
+                         can be excluded, using this to save time when
         :param qs: Percentage or sequence of percentages for the percentiles to compute.
-                     Values must be between 0 and 100 inclusive.
+                   Values must be between 0 and 100 inclusive.
+                   This parameter must be provided if user want to calculate the indicator 'VaR',
+                   In other words, if 'var' not in parameter 'excluded', this must be provided.
         :return:
         """
         self.cal_return_mean()
@@ -171,61 +239,104 @@ class CNAV(object):
         self.cal_sharpe_ratio()
         self.cal_max_drawdown_scale()
         self.cal_calmar_ratio()
-        self.cal_max_drawdown_duration()
-        self.cal_max_recover_duration()
-        self.cal_value_at_risk(qs=qs)
+
+        if "ldd" not in excluded:
+            self.cal_longest_drawdown_duration()
+        if "lrd" not in excluded:
+            self.cal_longest_recover_duration()
+        if "var" not in excluded:
+            self.cal_value_at_risk(qs=qs)
         return 0
 
-    def to_dict(self, save_type: str):
-        """
+    def to_dict(self) -> dict:
+        d = {}
+        if self.return_mean.avlb:
+            d.update({"retMean": self.return_mean.val})
 
-        :param save_type: "eng": pure English characters, "chs": chinese characters can be read by Latex
-        :return:
-        """
-        if save_type.lower() == "eng":
-            d = {
-                "retMean": f"{self.return_mean * self.ret_scale_display:.3f}",
-                "retStd": f"{self.return_std * self.ret_scale_display:.3f}",
-                "hpr": f"{self.hold_period_return * self.ret_scale_display:.2f}",
-                "retAnnual": f"{self.annual_return * self.ret_scale_display:.2f}",
-                "volAnnual": f"{self.annual_volatility * self.ret_scale_display:.2f}",
-                "sharpeRatio": f"{self.sharpe_ratio:.2f}",
-                "calmarRatio": f"{self.calmar_ratio:.2f}",
-                "mdd": f"{self.max_drawdown_scale * self.ret_scale_display:.2f}",
-                "mddT": f"{self.max_drawdown_scale_idx:s}",
-                "mddDur": f"{self.max_drawdown_duration:d}",
-                "mddDurT": f"{self.max_drawdown_duration_idx:s}",
-                "mrd": f"{self.max_recover_duration:d}",
-                "mrdT": f"{self.max_recover_duration_idx:s}",
-            }
-            d.update({k: "{:.3f}".format(v) for k, v in self.value_at_risks.items()})
-        elif save_type.lower() == "chs":
-            d = {
-                "收益率平均": f"{self.return_mean * self.ret_scale_display:.3f}",
-                "收益率波动": f"{self.return_std * self.ret_scale_display:.3f}",
-                "持有期收益": f"{self.hold_period_return * self.ret_scale_display:.2f}",
-                "年化收益": f"{self.annual_return * self.ret_scale_display:.2f}",
-                "年化波动": f"{self.annual_volatility * self.ret_scale_display:.2f}",
-                "夏普比率": f"{self.sharpe_ratio:.2f}",
-                "卡玛比率": f"{self.calmar_ratio:.2f}",
-                "最大回撤": f"{self.max_drawdown_scale * self.ret_scale_display:.2f}",
-                "最大回撤时点": f"{self.max_drawdown_scale_idx:s}",
-                "最长回撤期": f"{self.max_drawdown_duration:d}",
-                "最长回撤期时点": f"{self.max_drawdown_duration_idx:s}",
-                "最长恢复期": f"{self.max_recover_duration:d}",
-                "最长恢复期时点": f"{self.max_recover_duration_idx:s}",
-            }
-            d.update({k: "{:.3f}".format(v) for k, v in self.value_at_risks.items()})
-        else:
-            raise ValueError
+        if self.return_std.avlb:
+            d.update({"retStd": self.return_std.val})
+
+        if self.hold_period_return.avlb:
+            d.update({"hpr": self.hold_period_return.val})
+
+        if self.annual_return.avlb:
+            d.update({"retAnnual": self.annual_return.val})
+
+        if self.annual_volatility.avlb:
+            d.update({"volAnnual": self.annual_volatility.val})
+
+        if self.sharpe_ratio.avlb:
+            d.update({"sharpe": self.sharpe_ratio.val})
+
+        if self.calmar_ratio.avlb:
+            d.update({"calmar": self.calmar_ratio.val})
+
+        if self.max_drawdown_scale.avlb:
+            d.update({
+                "mdd": self.max_drawdown_scale.val,
+                "mddT": self.max_drawdown_scale.idx,
+            })
+
+        if self.longest_drawdown_duration.avlb:
+            d.update({
+                "lddDur": self.longest_drawdown_duration.val,
+                "lddDurT": self.longest_drawdown_duration.idx,
+            })
+
+        if self.longest_recover_duration.avlb:
+            d.update({
+                "lrd": self.longest_recover_duration.val,
+                "lrdT": self.longest_recover_duration.idx,
+            })
+
+        if self.value_at_risks.avlb:
+            d.update(self.value_at_risks.val)
         return d
 
-    def display(self):
-        print("| HPR = {:>7.4f} | AnnRtn = {:>7.4f} | MDD = {:>7.2f} | SPR = {:>7.4f} | CMR = {:>7.4f} |".format(
-            self.hold_period_return * self.ret_scale_display,
-            self.annual_return * self.ret_scale_display,
-            self.max_drawdown_scale * self.ret_scale_display,
-            self.sharpe_ratio,
-            self.calmar_ratio
-        ))
-        return 0
+    def reformat_to_display(self):
+        d = {}
+        if self.return_mean.avlb:
+            d.update({"retMean": self.return_mean.display()})
+
+        if self.return_std.avlb:
+            d.update({"retStd": self.return_std.display()})
+
+        if self.hold_period_return.avlb:
+            d.update({"hpr": self.hold_period_return.display()})
+
+        if self.annual_return.avlb:
+            d.update({"retAnnual": self.annual_return.display()})
+
+        if self.annual_volatility.avlb:
+            d.update({"volAnnual": self.annual_volatility.display()})
+
+        if self.sharpe_ratio.avlb:
+            d.update({"sharpe": self.sharpe_ratio.display()})
+
+        if self.calmar_ratio.avlb:
+            d.update({"calmar": self.calmar_ratio.display()})
+
+        if self.max_drawdown_scale.avlb:
+            d.update({
+                "mdd": self.max_drawdown_scale.display(),
+                "mddT": self.max_drawdown_scale.displayIdx(),
+            })
+
+        if self.longest_drawdown_duration.avlb:
+            d.update({
+                "lddDur": self.longest_drawdown_duration.display(),
+                "lddDurT": self.longest_drawdown_duration.displayIdx(),
+            })
+
+        if self.longest_recover_duration.avlb:
+            d.update({
+                "lrd": self.longest_recover_duration.display(),
+                "lrdT": self.longest_recover_duration.displayIdx(),
+            })
+
+        if self.value_at_risks.avlb:
+            s = self.value_at_risks.display()
+            for val in s.split(","):
+                k, v = val.split("=")
+                d[k] = v
+        return d
