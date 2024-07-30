@@ -4,6 +4,7 @@ husfort/__init__.py
 husfort/qcalendar.py
 husfort/qevaluation.py
 husfort/qinstruments.py
+husfort/qlog.py
 husfort/qmails.py
 husfort/qmm.py
 husfort/qoptimization.py
@@ -19,4 +20,5 @@ husfort.egg-info/requires.txt
 husfort.egg-info/top_level.txt
 husfort/tests/__init__.py
 husfort/tests/test_qevaluation.py
+husfort/tests/test_qlog.py
 husfort/tests/test_qplot.py

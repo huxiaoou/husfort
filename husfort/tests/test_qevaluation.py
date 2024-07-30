@@ -12,7 +12,7 @@ if __name__ == "__main__":
     print(ret_data)
 
     nav = CNAV(input_srs=ret_data, input_type="RET")
-    nav.cal_all_indicators(excluded=("var", ), qs=(1, 99))
+    nav.cal_all_indicators(excluded=("var",), qs=(1, 99))
     res = nav.to_dict()
     print(res)
 

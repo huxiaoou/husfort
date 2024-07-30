@@ -13,7 +13,7 @@ setuptools.setup(
     long_description=long_description,
     long_description_content_type="text/markdown",
     url="https://github.com/huxiaoou/husfort",
-    install_requires=["numpy", "pandas", "matplotlib"],
+    install_requires=["numpy", "pandas", "matplotlib", "loguru", "rich"],
     classifiers=[
         "Programming Language :: Python :: 3",
         "License :: OSI Approved :: MIT License",
