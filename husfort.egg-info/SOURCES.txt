@@ -22,3 +22,5 @@ husfort/tests/__init__.py
 husfort/tests/test_qevaluation.py
 husfort/tests/test_qlog.py
 husfort/tests/test_qplot.py
+husfort/utility/__init__.py
+husfort/utility/display_colors.py

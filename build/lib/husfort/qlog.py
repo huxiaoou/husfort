@@ -5,7 +5,7 @@ from loguru import logger
 def define_logger(
         level: str = "DEBUG",
         fmt_datetime: str = "[<green>{time:YYYY-MM-DD HH:mm:ss.SSS}</green>]",
-        fmt_level: str = "[<level>{level:*^8}</level>]",
+        fmt_level: str = "[<level>{level:<8}</level>]",
         fmt_name: str = "<cyan>{name}</cyan>",
         fmt_func: str = "<cyan>{function}</cyan>",
         fmt_line: str = "<cyan>{line}</cyan>",
