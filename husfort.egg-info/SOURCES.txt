@@ -17,3 +17,6 @@ husfort.egg-info/SOURCES.txt
 husfort.egg-info/dependency_links.txt
 husfort.egg-info/requires.txt
 husfort.egg-info/top_level.txt
+husfort/tests/__init__.py
+husfort/tests/test_qevaluation.py
+husfort/tests/test_qplot.py
