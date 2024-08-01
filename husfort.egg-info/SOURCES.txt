@@ -26,3 +26,4 @@ husfort/tests/test_qlog.py
 husfort/tests/test_qplot.py
 husfort/utility/__init__.py
 husfort/utility/display_colors.py
+husfort/utility/view_h5.py
