@@ -6,6 +6,7 @@ from email.mime.multipart import MIMEMultipart
 from email.mime.text import MIMEText
 from email.mime.application import MIMEApplication
 from email.header import Header
+from loguru import logger
 
 
 class CAttachmentText(object):
@@ -57,17 +58,17 @@ class CAgentEmail(object):
         try:
             # smtp_app = smtplib.SMTP_SSL(self.mail_host, self.mail_port)
             smtp_app = smtplib.SMTP(self.mail_host, self.mail_port)
-            print(f"... [INF] {dt.datetime.now()} {SFG('connected')}")
+            logger.info(f"{SFG('connected')}")
 
             smtp_app.login(self.mail_sender, self.mail_sender_pwd)
-            print(f"... [INF] {dt.datetime.now()} {SFG('logged in')}")
+            logger.info(f"{SFG('logged in')}")
 
             smtp_app.sendmail(self.mail_sender, self.message["To"].split(","), self.message.as_string())
-            print(f"... [INF] {dt.datetime.now()} {SFG('邮件发送成功')}")
-            print(
-                f"... [INF] 主题为:[{SFG(str(self.message['Subject']))}]的邮件已发送到以下邮箱:{SFG(self.message['To'])}\n"
+            logger.info(f"{SFG('email sent')}")
+            logger.info(
+                f"email with subject = [{SFG(str(self.message['Subject']))}] has been sent to:{SFG(self.message['To'])}\n"
             )
         except smtplib.SMTPException as e:
-            print(f"... [INF] {dt.datetime.now()} {SFY('Error: 未能成功发送')}")
-            print(e)
+            logger.error("fails when sending email")
+            logger.error(e)
         return 0

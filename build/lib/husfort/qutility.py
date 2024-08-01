@@ -4,6 +4,7 @@ import re
 import functools
 import datetime as dt
 from itertools import islice
+from loguru import logger
 
 
 def get_mix_string_len(mix_string: str, expected_len: int):
@@ -43,7 +44,7 @@ def check_and_mkdir(dir_path: str, verbose: bool = False):
     except FileExistsError:
         pass
     if verbose:
-        print(f"[INF] Making directory {SFG(dir_path)}")
+        logger.info(f"[INF] Making directory {SFG(dir_path)}")
     return 0
 
 
@@ -53,7 +54,7 @@ def check_and_makedirs(dir_path: str, verbose: bool = False):
     except FileExistsError:
         pass
     if verbose:
-        print(f"[INF] Making directory {SFG(dir_path)}")
+        logger.info(f"[INF] Making directory {SFG(dir_path)}")
     return 0
 
 
@@ -75,11 +76,11 @@ def qtimer(func):
     @functools.wraps(func)  # use this statement to make this function compatible within custom classes
     def wrap_func(*args, **kwargs):
         t1 = dt.datetime.now()
-        print(f"[INF] {SFG(t1)} Begin to execute Function {SFG(f'{func.__name__!r}')}")
+        logger.info(f"Function {SFG(f'{func.__name__!r}')} begins")
         result = func(*args, **kwargs)
         t2 = dt.datetime.now()
         duration = (t2 - t1).total_seconds()
-        print(f"[INF] {SFG(t2)} Function {SFG(f'{func.__name__!r}')} executed in {SFG(f'{duration:.4f}')} seconds")
+        logger.info(f"Function {SFG(f'{func.__name__!r}')} ends. Executed in {SFG(f'{duration:.4f}')} seconds")
         return result
 
     return wrap_func

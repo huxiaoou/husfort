@@ -21,8 +21,7 @@ class CInstrumentInfoTable(object):
         elif file_type.upper() == "CSV":
             self.instrument_info_df = pd.read_csv(instru_info_path).set_index(index_label)
         else:
-            print(f"file type = {file_type} is illegal")
-            raise ValueError
+            raise ValueError(f"file type = {file_type} is illegal")
         self.instrument_info_df["precision"] = self.instrument_info_df["miniSpread"].map(
             lambda z: max(int(-np.floor(np.log10(z))), 0))
 
@@ -43,8 +42,7 @@ class CInstrumentInfoTable(object):
             except KeyError:
                 return self.instrument_info_df.index.tolist()
         else:
-            print(f"... {code_format} not a legal input for argument 'code_format', please check again")
-            raise ValueError
+            raise ValueError(f"{code_format} is illegal input for argument 'code_format', please check again")
 
     @staticmethod
     def parse_instrument_from_contract(contract_id: str) -> str:
@@ -187,8 +185,7 @@ class CContract(object):
                 contract_multiplier=other.contract_multiplier,
             )
         else:
-            print(f"{other} is not an instance of CContract")
-            raise TypeError
+            raise TypeError(f"{other} is not an instance of CContract")
 
 
 TDirection = NewType("TypeDirection", int)

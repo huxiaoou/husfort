@@ -1,6 +1,7 @@
 import os
 import pandas as pd
 import sqlite3 as sql3
+from loguru import logger
 from husfort.qcalendar import CCalendar, CSection, CCalendarSection
 from husfort.qutility import SFR, SFY
 
@@ -135,16 +136,16 @@ class CManagerLibReader(CMangerLibBase):
         if expected_next_date == append_date:
             return 0
         elif expected_next_date < append_date:
-            print(f"... [INF] Warning! Last date of {SFR(tgt_table_name)} is {last_date}")
-            print(f"... [INF] And expected next date should be {SFR(expected_next_date)}")
-            print(f"... [INF] But input date = {append_date}")
-            print(f"... [INF] Some days may be {SFY('omitted')}")
+            logger.info(f"Warning! Last date of {SFR(tgt_table_name)} is {last_date}")
+            logger.info(f"And expected next date should be {SFR(expected_next_date)}")
+            logger.info(f"But input date = {append_date}")
+            logger.info(f"Some days may be {SFY('omitted')}")
             return 1
         else:  # expected_next_date > append_date
-            print(f"... [INF] Warning! Last date of {SFR(tgt_table_name)} is {last_date}")
-            print(f"... [INF] And expected next date should be {SFR(expected_next_date)}")
-            print(f"... [INF] But input date = {append_date}.")
-            print(f"... [INF] Some days may be {SFY('overlapped')}")
+            logger.info(f"Warning! Last date of {SFR(tgt_table_name)} is {last_date}")
+            logger.info(f"And expected next date should be {SFR(expected_next_date)}")
+            logger.info(f"But input date = {append_date}.")
+            logger.info(f"Some days may be {SFY('overlapped')}")
             return 2
 
     def check_section_continuity(self, append_sec: CSection, calendar: CCalendarSection,
@@ -159,10 +160,10 @@ class CManagerLibReader(CMangerLibBase):
             if match_res:
                 expected_next_sec = calendar.get_next_sec(last_sec, 1)
             else:
-                print(f"... [INF] {SFY(tgt_sec_id)} is not a right trade section")
+                logger.info(f"{SFY(tgt_sec_id)} is not a right trade section")
                 expected_next_sec = None
         else:
-            print(f"... [INF] No last section available in {tgt_table_name}")
+            logger.info(f"No last section available in {tgt_table_name}")
             expected_next_sec = None
 
         if expected_next_sec is None:
@@ -170,14 +171,14 @@ class CManagerLibReader(CMangerLibBase):
         if expected_next_sec == append_sec:
             return 0
         elif expected_next_sec < append_sec:
-            print(f"... [INF] Expected next section should be {SFR(expected_next_sec.secId)}")
-            print(f"... [INF] But input section = {append_sec.secId}.")
-            print(f"... [INF] Some sections may be {SFY('omitted')}")
+            logger.info(f"Expected next section should be {SFR(expected_next_sec.secId)}")
+            logger.info(f"But input section = {append_sec.secId}.")
+            logger.info(f"Some sections may be {SFY('omitted')}")
             return 1
         else:  # expected_next_sec > append_sec:
-            print(f"... [INF] Expected next section should be {SFR(expected_next_sec.secId)}")
-            print(f"... [INF] But input section = {append_sec.secId}.")
-            print(f"... [INF] Some sections may be {SFY('overlapped')}")
+            logger.info(f"Expected next section should be {SFR(expected_next_sec.secId)}")
+            logger.info(f"But input section = {append_sec.secId}.")
+            logger.info(f"Some sections may be {SFY('overlapped')}")
             return 2
 
 
@@ -201,11 +202,11 @@ class CManagerLibWriter(CManagerLibReader):
         # remove old table
         if self.is_table_existence(table):
             if verbose:
-                print(f"... Table {table.table_name} is in database {self.db_name} already")
+                logger.info(f"Table {table.table_name} is in database {self.db_name} already")
             if remove_existence:
                 self.remove_table(table.table_name)
                 if verbose:
-                    print(f"... Table {table.table_name} is removed from database {self.db_name}")
+                    logger.info(f"Table {table.table_name} is removed from database {self.db_name}")
 
         str_primary_keys = [f"{k} {v}" for k, v in table.primary_keys.items()]
         str_value_columns = [f"{k} {v}" for k, v in table.value_columns.items()]
@@ -217,7 +218,7 @@ class CManagerLibWriter(CManagerLibReader):
         if set_as_default:
             self.set_default(default_table_name=table.table_name)
         if verbose:
-            print(f"... Table {table.table_name} in {self.db_name} is initialized")
+            logger.info(f"Table {table.table_name} in {self.db_name} is initialized")
         return 0
 
     def initialize_tables(self, tables: list[CTable], remove_existence: bool = True, default_table_name: str = "",
@@ -296,8 +297,7 @@ class CQuickSqliteLib(object):
         elif run_mode.lower() in ["a", "append"]:
             lib_writer.initialize_table(lib_struct.table, remove_existence=False)
         else:
-            print(f"... [ERR] run_mode = {run_mode}")
-            raise ValueError
+            raise ValueError(f"run_mode = {run_mode} is illegal")
         return lib_writer
 
     def get_lib_reader(self) -> CManagerLibReader:

@@ -4,6 +4,7 @@ import multiprocessing as mp
 import numpy as np
 import pandas as pd
 from rich.progress import track
+from loguru import logger
 from husfort.qutility import check_and_mkdir, qtimer
 from husfort.qsqlite import CLibFactor, CLibAvailableUniverse
 from husfort.qcalendar import CCalendar
@@ -227,8 +228,7 @@ class CPositionPlus(CPosition):
             realized_pnl = dp * self.pos_key.direction * self.pos_key.contract.contract_multiplier * quantity
             self._quantity -= quantity
         else:
-            print(f"operation = {trade.operation} is illegal")
-            raise ValueError
+            raise ValueError(f"operation = {trade.operation} is illegal")
         return {
             "trade_date": exe_date,
             "contract": self.pos_key.contract.contract,
@@ -469,7 +469,7 @@ class CPortfolio(object):
                 price_type=settle_price_type
             )
             if np.isnan(last_price):
-                print(f"nan price for {contract_id} {exe_date}")
+                logger.info(f"nan price for {contract_id} @ {exe_date}")
             else:
                 pos.update_last_price(price=last_price)
             self.daily_recorder.snapshots_pos.append(pos.to_dict(exe_date))
@@ -593,7 +593,7 @@ def cal_multiple_complex_simulations(
     instru_info_tab = CInstrumentInfoTable(instru_info_path=instru_info_path, file_type="CSV", index_label="windCode")
     mgr_md = CManagerMarketData(universe=universe, market_data_dir=market_data_dir)
     mgr_major = CManagerMajor(universe=universe, major_minor_dir=major_minor_dir)
-    print(f"{dt.datetime.now()} [INF] prerequisite loaded ...")
+    logger.info(f"prerequisite loaded ...")
 
     # Serialize
     signals: list[tuple[CPortfolio, CManagerSignal]] = []
