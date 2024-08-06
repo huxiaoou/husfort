@@ -25,6 +25,10 @@ class CDbHDF5:
     def full_name(self) -> str:
         return os.path.join(self.db_save_dir, self.db_name, self.table)
 
+    def has_key(self) -> bool:
+        with pd.HDFStore(self.path, mode="a") as store:
+            return self.table in store
+
     def query_all(self) -> pd.DataFrame:
         with pd.HDFStore(self.path, mode="r") as store:
             df: pd.DataFrame = store.get(key=self.table)  # type:ignore
@@ -57,9 +61,14 @@ class CDbHDF5:
             df: pd.DataFrame = store.select(key=self.table, start=-n, stop=None)  # type:ignore
         return df
 
+    def put(self, df: pd.DataFrame):
+        with pd.HDFStore(self.path, mode="a") as store:
+            store.put(key=self.table, value=df, format="fixed", append=False)
+        return 0
+
     def append(self, df: pd.DataFrame, data_columns: list[str] | bool = None):
         with pd.HDFStore(self.path, mode="a") as store:
-            store.append(key=self.table, value=df, format="table", data_columns=data_columns)
+            store.append(key=self.table, value=df, format="table", append=True, data_columns=data_columns)
         return 0
 
 

@@ -31,7 +31,7 @@ if __name__ == "__main__":
     nr, nc = 20, 5
     cnms = [f"C{_:02d}" for _ in range(nc)]
     df = create_data(nr * 2, nc, cnames=cnms, hist_dates=h_dates)
-    df_head, df_tail = df.head(nr), df.tail(nr)
+    df_head, df_tail = df.head(nr), df.tail(nr).reset_index(drop=True)
 
     h5lib = CDbHDF5PlusTDates(db_save_dir=db_save_dir, db_name=db_name, table=table_name)
 
