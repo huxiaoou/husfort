@@ -36,16 +36,36 @@ class CSqlVars:
 
 
 class CSqlTable(object):
-    def __init__(self, name: str, primary_keys: list[CSqlVar], value_columns: list[CSqlVar]):
+    def __init__(
+            self,
+            name: str = None, primary_keys: list[CSqlVar] = None, value_columns: list[CSqlVar] = None,
+            cfg: dict = None
+    ):
         """
 
         :param name:
         :param primary_keys:
         :param value_columns:
+        :param cfg: use this dict only or use the three specific arguments above together
         """
 
-        self.name = name
-        self.vars: CSqlVars = CSqlVars(primary_keys=primary_keys, value_columns=value_columns)
+        if cfg:
+            self.name = cfg["name"]
+            self.vars: CSqlVars = CSqlVars(
+                primary_keys=[CSqlVar(k, v) for k, v in cfg["primary_keys"].items()],
+                value_columns=[CSqlVar(k, v) for k, v in cfg["value_columns"].items()],
+            )
+        else:
+            self.name = name
+            self.vars: CSqlVars = CSqlVars(primary_keys=primary_keys, value_columns=value_columns)
+
+    def __repr__(self) -> str:
+        return (
+                "CSqlTable(\n"
+                f"name={self.name}\n"
+                f"primary_keys={self.vars.primary_keys}\n"
+                f"value_columns={self.vars.value_columns}\n)"
+        )
 
     @property
     def cmd_sql_upd(self) -> str:
@@ -65,6 +85,13 @@ class CSqlTable(object):
     def cmd_sql_primary(self) -> str:
         str_set_primary = f"PRIMARY KEY({', '.join(self.vars.primary_names)})"
         return str_set_primary
+
+
+@dataclasses.dataclass(frozen=True)
+class CDbStruct:
+    db_save_dir: str
+    db_name: str
+    table: CSqlTable
 
 
 class CMgrSqlDb(object):
