@@ -27,3 +27,4 @@ husfort/tests/test_qsqlite.py
 husfort/utility/__init__.py
 husfort/utility/display_colors.py
 husfort/utility/view_h5.py
+husfort/utility/view_sql.py

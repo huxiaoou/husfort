@@ -1,8 +1,7 @@
-if __name__ == "__main__":
-    import sys
-    import argparse
-    import pandas as pd
+import argparse
 
+
+def parse_args():
     args_parser = argparse.ArgumentParser(description="A python script to view hdf5")
     args_parser.add_argument("--lib", type=str, required=True,
                              help="path for h5 file, like 'E:\\tmp\\test.h5'")
@@ -15,8 +14,15 @@ if __name__ == "__main__":
                              "conds to filter, multiple conds are separated by ';', "
                              "like \"instrument = 'a' | instrument = 'd';trade_date <= '20120131'\" "
                              )
-    args = args_parser.parse_args()
+    _args = args_parser.parse_args()
+    return _args
 
+
+if __name__ == "__main__":
+    import sys
+    import pandas as pd
+
+    args = parse_args()
     with pd.HDFStore(path=args.lib, mode="r") as store:
         if args.conds:
             df: pd.DataFrame = store.select(key=args.table, where=args.conds.split(";"))  # type:ignore
