@@ -104,6 +104,17 @@ class CCalendar(object):
             ny, nm = ny + 1, nm - 12
         return f"{ny:04d}{nm:02d}"
 
+    def get_dates_header(self, bgn_date: str, stp_date: str, header_name: str = "trade_date") -> pd.DataFrame:
+        """
+        :param bgn_date: format = "YYYYMMDD"
+        :param stp_date: format = "YYYYMMDD"
+        :param header_name:
+        :return:
+        """
+
+        h = pd.DataFrame({header_name: self.get_iter_list(bgn_date, stp_date)})
+        return h
+
 
 CONST_TS1, CONST_TS2 = "TS1", "TS2"
 
