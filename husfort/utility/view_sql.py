@@ -46,6 +46,7 @@ def fetch(lib: str, table: str, names: list[str], conds: str) -> pd.DataFrame:
 if __name__ == "__main__":
     import sys
 
+    pd.set_option('display.unicode.east_asian_width', True)
     args = parse_args()
     col_names = args.vars.split(",") if args.vars else get_table_names(args.lib, args.table)
     df = fetch(args.lib, args.table, col_names, args.conds)
