@@ -61,10 +61,10 @@ class CSqlTable(object):
 
     def __repr__(self) -> str:
         return (
-                "CSqlTable(\n"
-                f"name={self.name}\n"
-                f"primary_keys={self.vars.primary_keys}\n"
-                f"value_columns={self.vars.value_columns}\n)"
+            "CSqlTable(\n"
+            f"name={self.name}\n"
+            f"primary_keys={self.vars.primary_keys}\n"
+            f"value_columns={self.vars.value_columns}\n)"
         )
 
     @property
@@ -92,6 +92,13 @@ class CDbStruct:
     db_save_dir: str
     db_name: str
     table: CSqlTable
+
+    def copy_to_another(self, another_db_save_dir: str, another_db_name: str) -> "CDbStruct":
+        return CDbStruct(
+            db_save_dir=another_db_save_dir,
+            db_name=another_db_name,
+            table=self.table
+        )
 
 
 class CMgrSqlDb(object):
