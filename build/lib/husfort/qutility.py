@@ -97,7 +97,7 @@ def show_cursor():
 
 
 def error_handler(error):
-    print(f"{SFR('Error')}: {error}", flush=True)
+    logger.error(error)
 
 
 def batched(iterable, batch_size: int):
