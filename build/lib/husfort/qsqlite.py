@@ -93,11 +93,16 @@ class CDbStruct:
     db_name: str
     table: CSqlTable
 
-    def copy_to_another(self, another_db_save_dir: str, another_db_name: str) -> "CDbStruct":
+    def copy_to_another(
+            self,
+            another_db_save_dir: str = None,
+            another_db_name: str = None,
+            another_table: CSqlTable = None,
+    ) -> "CDbStruct":
         return CDbStruct(
-            db_save_dir=another_db_save_dir,
-            db_name=another_db_name,
-            table=self.table
+            db_save_dir=another_db_save_dir or self.db_save_dir,
+            db_name=another_db_name or self.db_name,
+            table=another_table or self.table,
         )
 
 
