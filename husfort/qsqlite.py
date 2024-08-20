@@ -278,16 +278,20 @@ class CMgrSqlDb(object):
         if expected_next_date == incoming_date:
             return 0
         elif expected_next_date < incoming_date:
-            logger.info(f"Warning! Last date of {SFR(self.full_table_name)} is {SFR(last_date)}")
-            logger.info(f"And expected next date should be {SFR(expected_next_date)}")
-            logger.info(f"But input date = {SFR(incoming_date)}")
-            logger.info(f"Some days may be {SFR('omitted')}")
+            logger.info(
+                f"Warning! Last date of {SFR(self.full_table_name)} is {SFR(last_date)}, "
+                f"and expected next date should be {SFR(expected_next_date)}, "
+                f"but input date = {SFR(incoming_date)}, "
+                f"some days may be {SFR('omitted')}."
+            )
             return 1
         else:  # expected_next_date > append_date
-            logger.info(f"Warning! Last date of {SFY(self.full_table_name)} is {SFY(last_date)}")
-            logger.info(f"And expected next date should be {SFY(expected_next_date)}")
-            logger.info(f"But input date = {SFY(incoming_date)}.")
-            logger.info(f"Some days may be {SFY('overlapped')}")
+            logger.info(
+                f"Warning! Last date of {SFY(self.full_table_name)} is {SFY(last_date)}, "
+                f"and expected next date should be {SFY(expected_next_date)}, "
+                f"but input date = {SFY(incoming_date)}, "
+                f"some days may be {SFY('overlapped')}."
+            )
             return 2
 
     def check_section_continuity(self, append_sec: CSection, calendar: CCalendarSection,
