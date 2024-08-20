@@ -5,7 +5,7 @@ import pandas as pd
 def parse_args():
     args_parser = argparse.ArgumentParser(description="A python script to view hdf5")
     args_parser.add_argument("--path", type=str, required=True,
-                             help="path for sql file, like 'E:\\tmp\\test.csv.gz' or 'test.csv'")
+                             help="path for csv file, like 'E:\\tmp\\test.csv.gz' or 'test.csv'")
     args_parser.add_argument("--vars", type=str, default=None,
                              help="variables to fetch, separated by ',' like \"open,high,low,close\", "
                                   "if not provided then fetch all."
