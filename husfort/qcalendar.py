@@ -68,6 +68,9 @@ class CCalendar(object):
         next_sn = this_sn + shift
         return self.__trade_dates[next_sn]
 
+    def get_start_date(self, bgn_date: str, max_win: int, shift: int) -> str:
+        return self.get_next_date(bgn_date, -max_win + shift)
+
     @staticmethod
     def move_date_string(trade_date: str, move_days: int = 1) -> str:
         """
