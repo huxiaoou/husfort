@@ -12,6 +12,10 @@ def parse_args():
                              )
     args_parser.add_argument("--head", type=int, default=0, help="integer, head lines to print")
     args_parser.add_argument("--tail", type=int, default=0, help="integer, tail lines to print")
+    args_parser.add_argument("--conds", type=str, default=None,
+                             help="conds to filter, accepted by pandas.query "
+                                  "like \"(instrument = 'a' | instrument = 'd') & (trade_date <= '20120131')\" "
+                             )
     _args = args_parser.parse_args()
     return _args
 
@@ -23,6 +27,8 @@ if __name__ == "__main__":
     args = parse_args()
     col_names = args.vars.split(",") if args.vars else []
     df = pd.read_csv(args.path)
+    if args.conds:
+        df = df.query(args.conds)
     if col_names:
         df = df[col_names]
 
