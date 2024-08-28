@@ -71,6 +71,18 @@ class CCalendar(object):
     def get_start_date(self, bgn_date: str, max_win: int, shift: int) -> str:
         return self.get_next_date(bgn_date, -max_win + shift)
 
+    def get_last_days_in_range(self, bgn_date: str, stp_date: str) -> list[str]:
+        res = []
+        for this_day, next_day in zip(self.__trade_dates[:-1], self.__trade_dates[1:]):
+            if this_day < bgn_date:
+                continue
+            elif this_day >= stp_date:
+                break
+            else:
+                if this_day[0:6] != next_day[0:6]:
+                    res.append(this_day)
+        return res
+
     @staticmethod
     def move_date_string(trade_date: str, move_days: int = 1) -> str:
         """
