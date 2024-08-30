@@ -95,6 +95,29 @@ class CCalendar(object):
                 return t
         raise ValueError(f"Could not find last day for {month}")
 
+    def get_first_day_of_month(self, month: str) -> str:
+        """
+        :param month: like 202403
+
+        """
+
+        threshold = f"{month}01"
+        for t in self.__trade_dates:
+            if t >= threshold:
+                return t
+        raise ValueError(f"Could not find first day for {month}")
+
+    @staticmethod
+    def split_by_month(dates: list[str]) -> dict[str, list[str]]:
+        res = {}
+        for t in dates:
+            m = t[0:6]
+            if m not in res:
+                res[m] = [t]
+            else:
+                res[m].append(t)
+        return res
+
     @staticmethod
     def move_date_string(trade_date: str, move_days: int = 1) -> str:
         """
