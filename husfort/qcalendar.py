@@ -83,6 +83,18 @@ class CCalendar(object):
                     res.append(this_day)
         return res
 
+    def get_last_day_of_month(self, month: str) -> str:
+        """
+        :param month: like "202403"
+
+        """
+
+        threshold = f"{month}31"
+        for t in self.__trade_dates[::-1]:
+            if t <= threshold:
+                return t
+        raise ValueError(f"Could not find last day for {month}")
+
     @staticmethod
     def move_date_string(trade_date: str, move_days: int = 1) -> str:
         """
@@ -301,7 +313,7 @@ class CCalendarMonth(object):
         self.trade_months: list[CMonth] = []
         for (trade_month, trade_month_df) in calendar_df.groupby(by="trade_month"):
             month = CMonth(
-                trade_month=trade_month,
+                trade_month=trade_month,  # type:ignore
                 trade_dates=tuple(trade_month_df["trade_date"].tolist())
             )
             self.trade_months.append(month)
