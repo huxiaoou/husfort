@@ -202,6 +202,10 @@ class CMgrSqlDb(object):
         rows = self.__execute_cmd_read(cmd_sql_for_inquiry)
         return pd.DataFrame(data=rows, columns=self.get_column_names(value_columns))
 
+    @property
+    def empty(self) -> bool:
+        return self.read().empty
+
     def head(self, n: int = 5, value_columns: list[str] | None = None) -> pd.DataFrame:
         str_value_columns = self.parse_value_columns(value_columns)
         cmd_sql_get_head = f"SELECT {str_value_columns} FROM {self.table.name} ORDER BY rowid LIMIT {n}"
@@ -213,6 +217,13 @@ class CMgrSqlDb(object):
         cmd_sql_get_tail = f"SELECT {str_value_columns} FROM {self.table.name} ORDER BY rowid DESC LIMIT {n}"
         rows = self.__execute_cmd_read(cmd_sql_get_tail)[::-1]
         return pd.DataFrame(data=rows, columns=self.get_column_names(value_columns))
+
+    def last_val(self, val: str, val_if_none: int | float | str) -> float:
+        last_data = self.tail(n=1, value_columns=[val])
+        if last_data.empty:
+            return val_if_none
+        else:
+            return last_data[val].iloc[-1]
 
     def read_by_conditions(self, conditions: list[tuple[str, str, str]],
                            value_columns: list[str] | None = None) -> pd.DataFrame:
