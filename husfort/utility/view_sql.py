@@ -5,21 +5,39 @@ import pandas as pd
 
 def parse_args():
     args_parser = argparse.ArgumentParser(description="A python script to view hdf5")
-    args_parser.add_argument("--lib", type=str, required=True,
-                             help="path for sql file, like 'E:\\tmp\\alternative.db'")
-    args_parser.add_argument("--table", type=str, required=True,
-                             help="table name in the sql file, like 'macro' or 'forex' in alternative.db")
-    args_parser.add_argument("--vars", type=str, default=None,
-                             help="variables to fetch, separated by ',' like \"open,high,low,close\", "
-                                  "if not provided then fetch all."
-                             )
-    args_parser.add_argument("--conds", type=str, default=None,
-                             help="conds to filter, sql expression "
-                                  "like \"(instrument = 'a' OR instrument = 'd') AND (trade_date <= '20120131')\" "
-                             )
+    args_parser.add_argument(
+        "--lib",
+        type=str,
+        required=True,
+        help="path for sql file, like 'E:\\tmp\\alternative.db'",
+    )
+    args_parser.add_argument(
+        "--table",
+        type=str,
+        required=True,
+        help="table name in the sql file, like 'macro' or 'forex' in alternative.db",
+    )
+    args_parser.add_argument(
+        "--vars",
+        type=str,
+        default=None,
+        help="variables to fetch, separated by ',' like \"open,high,low,close\", "
+        "if not provided then fetch all.",
+    )
+    args_parser.add_argument(
+        "--where",
+        type=str,
+        default=None,
+        help="conditions to filter, sql expression "
+        "like \"(instrument = 'a' OR instrument = 'd') AND (trade_date <= '20120131')\" ",
+    )
 
-    args_parser.add_argument("--head", type=int, default=0, help="integer, head lines to print")
-    args_parser.add_argument("--tail", type=int, default=0, help="integer, tail lines to print")
+    args_parser.add_argument(
+        "--head", type=int, default=0, help="integer, head lines to print"
+    )
+    args_parser.add_argument(
+        "--tail", type=int, default=0, help="integer, tail lines to print"
+    )
     _args = args_parser.parse_args()
     return _args
 
@@ -46,10 +64,12 @@ def fetch(lib: str, table: str, names: list[str], conds: str) -> pd.DataFrame:
 if __name__ == "__main__":
     import sys
 
-    pd.set_option('display.unicode.east_asian_width', True)
+    pd.set_option("display.unicode.east_asian_width", True)
     args = parse_args()
-    col_names = args.vars.split(",") if args.vars else get_table_names(args.lib, args.table)
-    df = fetch(args.lib, args.table, col_names, args.conds)
+    col_names = (
+        args.vars.split(",") if args.vars else get_table_names(args.lib, args.table)
+    )
+    df = fetch(args.lib, args.table, col_names, args.where)
     if args.head > 0:
         print(df.head(args.head))
         sys.exit()
