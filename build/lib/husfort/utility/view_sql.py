@@ -38,6 +38,12 @@ def parse_args():
     args_parser.add_argument(
         "--tail", type=int, default=0, help="integer, tail lines to print"
     )
+    args_parser.add_argument(
+        "--maxrows",
+        type=int,
+        default=0,
+        help="integer, provide larger value to see more rows when print outcomes",
+    )
     _args = args_parser.parse_args()
     return _args
 
@@ -65,7 +71,11 @@ if __name__ == "__main__":
     import sys
 
     pd.set_option("display.unicode.east_asian_width", True)
+
     args = parse_args()
+    if args.maxrows > 0:
+        pd.set_option("display.max_rows", args.maxrows)
+
     col_names = (
         args.vars.split(",") if args.vars else get_table_names(args.lib, args.table)
     )
