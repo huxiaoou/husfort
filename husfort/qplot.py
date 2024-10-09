@@ -254,17 +254,17 @@ class CPlotFromDataFrame(CPlot):
             self.ax.set_yticklabels(yticklabels)
         return 0
 
-    def add_vlines_from_index(self, vlines_index: list, color: str = "r", style: str = "dashed"):
+    def add_vlines_from_index(self, vlines_index: list, color: str = "r", style: str = "dashed", linewidth: int = 1):
         if vlines_index:
             xlocs = [self.plot_data.index.get_loc(z) for z in vlines_index]
             ymin, ymax = self.ax.get_ylim()
-            self.ax.vlines(xlocs, ymin=ymin, ymax=ymax, colors=color, linestyles=style)
+            self.ax.vlines(xlocs, ymin=ymin, ymax=ymax, colors=color, linestyles=style, linewidth=linewidth)
         return 0
 
-    def add_hlines_from_value(self, hlines_value: list, color: str = "r", style: str = "dashed"):
+    def add_hlines_from_value(self, hlines_value: list, color: str = "r", style: str = "dashed", linewidth: int = 1):
         if hlines_value:
             xmin, xmax = self.ax.get_xlim()
-            self.ax.hlines(hlines_value, xmin=xmin, xmax=xmax, colors=color, linestyles=style)
+            self.ax.hlines(hlines_value, xmin=xmin, xmax=xmax, colors=color, linestyles=style, linewidth=linewidth)
         return 0
 
 
