@@ -1,8 +1,10 @@
 import os
 import numpy as np
 import pandas as pd
+import matplotlib
 import matplotlib.pyplot as plt
 
+matplotlib.use("Agg")
 plt.rcParams["font.sans-serif"] = ["SimHei"]
 plt.rcParams["axes.unicode_minus"] = False  # make compatible with negative or minus sign
 
