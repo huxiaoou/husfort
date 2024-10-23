@@ -22,10 +22,11 @@ husfort/tests/__init__.py
 husfort/tests/test_qevaluation.py
 husfort/tests/test_qh5.py
 husfort/tests/test_qlog.py
+husfort/tests/test_qoptimization.py
 husfort/tests/test_qplot.py
 husfort/tests/test_qsqlite.py
 husfort/utility/__init__.py
-husfort/utility/display_colors.py
+husfort/utility/view_colors.py
 husfort/utility/view_csv.py
 husfort/utility/view_h5.py
 husfort/utility/view_sql.py
