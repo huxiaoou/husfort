@@ -77,7 +77,7 @@ class COptimizerPortfolioUtility(COptimizerPortfolio):
         self.max_iter = max_iter
 
     def utility(self, w: np.ndarray):
-        return self.returns(w) + 0.5 * self.lbd * self.covariance(w)
+        return self.returns(w) - 0.5 * self.lbd * self.covariance(w)
 
     def target(self, w: np.ndarray):
         return -self.utility(w)
