@@ -140,10 +140,10 @@ class CPlot(object):
         self.ax.text(x, y, s=text, fontdict={"size": size})
         return 0
 
-    def save(self):
+    def save(self, dpi: int = 300):
         fig0_name = f"{self.fig_name}.{self.fig_save_type}"
         fig0_path = os.path.join(self.fig_save_dir, fig0_name)
-        self.fig.savefig(fig0_path, bbox_inches="tight")
+        self.fig.savefig(fig0_path, bbox_inches="tight", dpi=dpi)
         return 0
 
     def close(self):
@@ -153,8 +153,8 @@ class CPlot(object):
     def plot(self):
         raise NotImplementedError
 
-    def save_and_close(self):
-        self.save()
+    def save_and_close(self, dpi: int = 300):
+        self.save(dpi=dpi)
         self.close()
         return 0
 
