@@ -52,15 +52,24 @@ class COptimizerPortfolio:
 
 
 class _COptimizerScipyMinimize(COptimizerPortfolio):
-    def __init__(self, m: np.ndarray, v: np.ndarray, max_iter: int, tol: float):
+    def __init__(self, m: np.ndarray, v: np.ndarray, x0: np.ndarray | str, max_iter: int, tol: float):
         """
 
+        :param x0: init guess, or a string to indicate the method to generate init guess, available
+                   options = ("aver", )
         :param max_iter: maximum iteration
         :param tol: when too small, the target may be sensitive to the change of the input, and
                     results maybe overfitted. You may want to adjust it to adapt to your input
                     data scale.
         """
         super().__init__(m, v)
+        if isinstance(x0, str):
+            if x0 == "aver":
+                self.x0 = np.ones(self.p) / self.p
+            else:
+                raise ValueError(f"x0 = {x0} is illegal, try numpy array or literal string, such as 'aver'")
+        else:
+            self.x0 = x0
         self.max_iter = max_iter
         self.tol = tol
 
@@ -68,7 +77,7 @@ class _COptimizerScipyMinimize(COptimizerPortfolio):
 class COptimizerPortfolioUtility(_COptimizerScipyMinimize):
     def __init__(
             self,
-            m: np.ndarray, v: np.ndarray, lbd: float,
+            m: np.ndarray, v: np.ndarray, lbd: float, x0: np.ndarray | str,
             tot_mkt_val_bds: tuple[float, float] = (0.0, 1.0),
             bounds: list[tuple[float, float]] = None,
             max_iter: int = 50000,
@@ -84,7 +93,7 @@ class COptimizerPortfolioUtility(_COptimizerScipyMinimize):
         :return:
         """
 
-        super().__init__(m=m, v=v, max_iter=max_iter, tol=tol)
+        super().__init__(m=m, v=v, x0=x0, max_iter=max_iter, tol=tol)
         self.lbd = lbd
         self.tot_mkt_val_bds = tot_mkt_val_bds
         self.bounds = bounds
@@ -102,7 +111,7 @@ class COptimizerPortfolioUtility(_COptimizerScipyMinimize):
 
         # noinspection PyTypeChecker
         res = minimize(
-            fun=self.target, x0=np.ones(self.p) / self.p,
+            fun=self.target, x0=self.x0,
             bounds=self.bounds,
             constraints=[cons],
             options={"maxiter": self.max_iter},
@@ -114,7 +123,7 @@ class COptimizerPortfolioUtility(_COptimizerScipyMinimize):
 class COptimizerPortfolioSharpe(_COptimizerScipyMinimize):
     def __init__(
             self,
-            m: np.ndarray, v: np.ndarray,
+            m: np.ndarray, v: np.ndarray, x0: np.ndarray | str,
             bounds: list[tuple[float, float]],
             max_iter: int = 50000,
             tol: float = 1e-6,
@@ -124,7 +133,7 @@ class COptimizerPortfolioSharpe(_COptimizerScipyMinimize):
         :param bounds: bounds[0] <= w_i <= bounds[1], Sequence of (min, max) pairs for each
                        element in x. None is used to specify no bound.
         """
-        super().__init__(m=m, v=v, max_iter=max_iter, tol=tol)
+        super().__init__(m=m, v=v, x0=x0, max_iter=max_iter, tol=tol)
         self.bounds = bounds
 
     def target(self, w: np.ndarray):
@@ -138,7 +147,7 @@ class COptimizerPortfolioSharpe(_COptimizerScipyMinimize):
 
         # noinspection PyTypeChecker
         res = minimize(
-            fun=self.target, x0=np.ones(self.p) / self.p,
+            fun=self.target, x0=self.x0,
             bounds=self.bounds,
             constraints=[cons],
             options={"maxiter": self.max_iter},
