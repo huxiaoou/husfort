@@ -51,30 +51,43 @@ class COptimizerPortfolio:
         return parse_res_for_fun
 
 
-class COptimizerPortfolioUtility(COptimizerPortfolio):
-    def __init__(
-            self,
-            m: np.ndarray, v: np.ndarray,
-            lbd: float,
-            tot_mkt_val_bds: tuple[float, float] = (0.0, 1.0),
-            bounds: list[tuple[float, float]] = None,
-            max_iter: int = 50000
-    ):
-        """
-            :param lbd:
-            :param tot_mkt_val_bds: lb <= sum(abs(w)) <= ub, we highly suggest using lb = 0, or
-                                     the problem will not be convex
-            :param bounds: bounds[0] <= w_i <= bounds[1], Sequence of (min, max) pairs for each
-                           element in x. None is used to specify no bound.
-            :param max_iter:
-            :return:
+class _COptimizerScipyMinimize(COptimizerPortfolio):
+    def __init__(self, m: np.ndarray, v: np.ndarray, max_iter: int, tol: float):
         """
 
-        super().__init__(m=m, v=v)
+        :param max_iter: maximum iteration
+        :param tol: when too small, the target may be sensitive to the change of the input, and
+                    results maybe overfitted. You may want to adjust it to adapt to your input
+                    data scale.
+        """
+        super().__init__(m, v)
+        self.max_iter = max_iter
+        self.tol = tol
+
+
+class COptimizerPortfolioUtility(_COptimizerScipyMinimize):
+    def __init__(
+            self,
+            m: np.ndarray, v: np.ndarray, lbd: float,
+            tot_mkt_val_bds: tuple[float, float] = (0.0, 1.0),
+            bounds: list[tuple[float, float]] = None,
+            max_iter: int = 50000,
+            tol: float = 1e-6,
+    ):
+        """
+
+        :param lbd:
+        :param tot_mkt_val_bds: lb <= sum(abs(w)) <= ub, we highly suggest using lb = 0, or
+                                 the problem will not be convex
+        :param bounds: bounds[0] <= w_i <= bounds[1], Sequence of (min, max) pairs for each
+                       element in x. None is used to specify no bound.
+        :return:
+        """
+
+        super().__init__(m=m, v=v, max_iter=max_iter, tol=tol)
         self.lbd = lbd
         self.tot_mkt_val_bds = tot_mkt_val_bds
         self.bounds = bounds
-        self.max_iter = max_iter
 
     def utility(self, w: np.ndarray):
         return self.returns(w) - 0.5 * self.lbd * self.covariance(w)
@@ -92,21 +105,27 @@ class COptimizerPortfolioUtility(COptimizerPortfolio):
             fun=self.target, x0=np.ones(self.p) / self.p,
             bounds=self.bounds,
             constraints=[cons],
-            options={"maxiter": self.max_iter}
+            options={"maxiter": self.max_iter},
+            tol=self.tol,
         )
         return res
 
 
-class COptimizerPortfolioSharpe(COptimizerPortfolio):
+class COptimizerPortfolioSharpe(_COptimizerScipyMinimize):
     def __init__(
             self,
             m: np.ndarray, v: np.ndarray,
             bounds: list[tuple[float, float]],
-            max_iter: int = 50000
+            max_iter: int = 50000,
+            tol: float = 1e-6,
     ):
-        super().__init__(m=m, v=v)
+        """
+
+        :param bounds: bounds[0] <= w_i <= bounds[1], Sequence of (min, max) pairs for each
+                       element in x. None is used to specify no bound.
+        """
+        super().__init__(m=m, v=v, max_iter=max_iter, tol=tol)
         self.bounds = bounds
-        self.max_iter = max_iter
 
     def target(self, w: np.ndarray):
         return -self.sharpe(w)
@@ -122,6 +141,7 @@ class COptimizerPortfolioSharpe(COptimizerPortfolio):
             fun=self.target, x0=np.ones(self.p) / self.p,
             bounds=self.bounds,
             constraints=[cons],
-            options={"maxiter": self.max_iter}
+            options={"maxiter": self.max_iter},
+            tol=self.tol,
         )
         return res
