@@ -1,3 +1,4 @@
+LICENSE
 README.md
 setup.py
 husfort/__init__.py
