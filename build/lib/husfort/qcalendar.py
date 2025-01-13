@@ -56,6 +56,9 @@ class CCalendar(object):
     def get_date(self, sn: int) -> str:
         return self.__trade_dates[sn]
 
+    def has_date(self, trade_date: str) -> bool:
+        return trade_date in self.__trade_dates
+
     def get_next_date(self, this_date: str, shift: int = 1) -> str:
         """
 
@@ -201,13 +204,13 @@ class CSection(object):
 
 class CCalendarSection(object):
     def __init__(
-            self,
-            calendar_path: str,
-            header: int = None,
-            ts1_bgn_time: str = "19:00:00.000000",
-            ts1_end_time: str = "07:00:00.000000",
-            ts2_bgn_time: str = "07:00:00.000000",
-            ts2_end_time: str = "19:00:00.000000",
+        self,
+        calendar_path: str,
+        header: int | None = None,
+        ts1_bgn_time: str = "19:00:00.000000",
+        ts1_end_time: str = "07:00:00.000000",
+        ts2_bgn_time: str = "07:00:00.000000",
+        ts2_end_time: str = "19:00:00.000000",
     ):
         self.sections: list[CSection] = []
         if header:
@@ -273,8 +276,9 @@ class CCalendarSection(object):
         res = [sec for sec in self.sections if sec.trade_date == tgt_date]
         return (True, res) if res else (False, res)
 
-    def parse_section(self, using_now: bool, bgn_sec_id: str, stp_sec_id: str) \
-            -> tuple[bool, tuple[CSection, CSection]]:
+    def parse_section(
+        self, using_now: bool, bgn_sec_id: str, stp_sec_id: str
+    ) -> tuple[bool, tuple[CSection | None, CSection | None]]:
         if using_now:
             tp = dt.datetime.now().strftime("%Y%m%d %H:%M:%S.%f")
             _, b = self.match(tp)
@@ -327,17 +331,17 @@ class CMonth(object):
 
 
 class CCalendarMonth(object):
-    def __init__(self, calendar_path: os.path, header: int = 0):
+    def __init__(self, calendar_path: str, header: int = 0):
         if isinstance(header, int):
             calendar_df = pd.read_csv(calendar_path, dtype=str, header=header)
         else:
             calendar_df = pd.read_csv(calendar_path, dtype=str, header=None, names=["trade_date"])
         calendar_df["trade_month"] = calendar_df["trade_date"].map(lambda z: z.replace("-", "")[0:6])
         self.trade_months: list[CMonth] = []
-        for (trade_month, trade_month_df) in calendar_df.groupby(by="trade_month"):
+        for trade_month, trade_month_df in calendar_df.groupby(by="trade_month"):
             month = CMonth(
                 trade_month=trade_month,  # type:ignore
-                trade_dates=tuple(trade_month_df["trade_date"].tolist())
+                trade_dates=tuple(trade_month_df["trade_date"].tolist()),
             )
             self.trade_months.append(month)
 
@@ -378,8 +382,9 @@ class CCalendarMonth(object):
         stp_idx = self.trade_months.index(stp_month)
         return self.trade_months[bgn_idx:stp_idx]
 
-    def map_iter_dates_to_iter_month(self, bgn_date: str, stp_date: str,
-                                     calendar: CCalendar, exclude_last: bool = True) -> list[CMonth]:
+    def map_iter_dates_to_iter_month(
+        self, bgn_date: str, stp_date: str, calendar: CCalendar, exclude_last: bool = True
+    ) -> list[CMonth]:
         """
 
         :param bgn_date:
