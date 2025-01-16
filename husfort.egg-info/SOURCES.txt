@@ -27,6 +27,7 @@ husfort/tests/test_qoptimization.py
 husfort/tests/test_qplot.py
 husfort/tests/test_qsqlite.py
 husfort/utility/__init__.py
+husfort/utility/get_datetime_fromtimestamp.py
 husfort/utility/view_colors.py
 husfort/utility/view_csv.py
 husfort/utility/view_h5.py

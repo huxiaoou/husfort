@@ -1,4 +1,4 @@
-Metadata-Version: 2.2
+Metadata-Version: 2.1
 Name: husfort
 Version: 1.0.0
 Summary: Handy & Utility Solution For Operation, Research and Trading
@@ -17,15 +17,6 @@ Requires-Dist: matplotlib
 Requires-Dist: scipy
 Requires-Dist: loguru
 Requires-Dist: rich
-Dynamic: author
-Dynamic: author-email
-Dynamic: classifier
-Dynamic: description
-Dynamic: description-content-type
-Dynamic: home-page
-Dynamic: requires-dist
-Dynamic: requires-python
-Dynamic: summary
 
 # Description
 
