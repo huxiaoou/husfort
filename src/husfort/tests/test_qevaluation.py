@@ -1,7 +1,7 @@
 if __name__ == "__main__":
     import pandas as pd
     import scipy.stats as sps
-    from husfort.qevaluation import CNAV
+    from src.husfort.qevaluation import CNAV
 
     mu, sd = 0.002, 0.012
     n = 2000

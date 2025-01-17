@@ -1,7 +1,7 @@
 if __name__ == "__main__":
     import numpy as np
     import pandas as pd
-    from husfort.qoptimization import COptimizerPortfolioUtility, COptimizerPortfolioSharpe
+    from src.husfort.qoptimization import COptimizerPortfolioUtility, COptimizerPortfolioSharpe
 
     m0 = np.array([0.9, 0, -0.6, 0.1])
     v0 = np.array([

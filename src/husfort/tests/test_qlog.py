@@ -1,5 +1,5 @@
 from loguru import logger
-from husfort.qlog import define_logger
+from src.husfort.qlog import define_logger
 
 define_logger(level="TRACE", fmt_msg="<level>{message}</level>")
 

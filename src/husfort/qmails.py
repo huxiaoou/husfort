@@ -1,7 +1,6 @@
 import os
-import datetime as dt
 import smtplib
-from husfort.qutility import SFG, SFY
+from src.husfort.qutility import SFG
 from email.mime.multipart import MIMEMultipart
 from email.mime.text import MIMEText
 from email.mime.application import MIMEApplication

@@ -1,0 +1,23 @@
+[build-system]
+requires = ["setuptools>=61.0"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "husfort"
+version = "1.0.0"
+authors = [
+    { name = "huxiaoou", email = "516984451@qq.com" },
+]
+description = "Handy & Utility Solution For Operation, Research and Trading"
+readme = "README.md"
+requires-python = ">=3.9"
+classifiers = [
+    "Programming Language :: Python :: 3",
+    "Operating System :: OS Independent",
+]
+dependencies = ["numpy", "pandas", "matplotlib", "scipy", "loguru", "rich"]
+license = { file = "LICENSE" }
+
+[project.urls]
+Homepage = "https://github.com/huxiaoou/husfort"
+Issues = "https://github.com/huxiaoou/husfort/issues"
