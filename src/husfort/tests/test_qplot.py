@@ -1,7 +1,7 @@
 if __name__ == "__main__":
     import pandas as pd
     from random import randint
-    from src.husfort.qplot import CPlotLines, CPlotBarsV, CPlotBarsH
+    from husfort.qplot import CPlotLines, CPlotBarsV, CPlotBarsH
 
     test_size = 60
     test_save_dir = r"E:\TMP"

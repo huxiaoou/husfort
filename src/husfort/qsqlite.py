@@ -3,8 +3,8 @@ import dataclasses
 import pandas as pd
 import sqlite3 as sql3
 from loguru import logger
-from src.husfort.qcalendar import CCalendar, CSection, CCalendarSection
-from src.husfort.qutility import SFR, SFY, SFG
+from husfort.qcalendar import CCalendar, CSection, CCalendarSection
+from husfort.qutility import SFR, SFY, SFG
 
 
 @dataclasses.dataclass(frozen=True)

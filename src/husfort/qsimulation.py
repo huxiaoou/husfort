@@ -4,14 +4,14 @@ import numpy as np
 import pandas as pd
 from rich.progress import track
 from loguru import logger
-from src.husfort.qutility import check_and_mkdir, qtimer
-from src.husfort.qsqlite import CLibFactor, CLibAvailableUniverse
-from src.husfort.qcalendar import CCalendar
-from src.husfort.qinstruments import (CInstrumentInfoTable, CPosKey, CContract,
-                                      TOperation, TDirection,
-                                      CONST_DIRECTION_LNG, CONST_DIRECTION_SRT,
-                                      CONST_OPERATION_OPN, CONST_OPERATION_CLS)
-from src.husfort import CManagerMarketData, CManagerMajor
+from husfort.qutility import check_and_mkdir, qtimer
+from husfort.qsqlite import CLibFactor, CLibAvailableUniverse
+from husfort.qcalendar import CCalendar
+from husfort.qinstruments import (CInstrumentInfoTable, CPosKey, CContract,
+                                  TOperation, TDirection,
+                                  CONST_DIRECTION_LNG, CONST_DIRECTION_SRT,
+                                  CONST_OPERATION_OPN, CONST_OPERATION_CLS)
+from husfort import CManagerMarketData, CManagerMajor
 
 
 class CSignal(object):

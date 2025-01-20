@@ -15,10 +15,10 @@ def create_data(nrow: int, ncol: int, cnames: list[str], hist_dates: list[str],
 
 if __name__ == "__main__":
     from loguru import logger
-    from src.husfort.qutility import SFY
-    from src.husfort.qcalendar import CCalendar
-    from src.husfort.qlog import define_logger
-    from src.husfort.qh5 import CDbHDF5PlusTDates
+    from husfort.qutility import SFY
+    from husfort.qcalendar import CCalendar
+    from husfort.qlog import define_logger
+    from husfort.qh5 import CDbHDF5PlusTDates
 
     define_logger()
 
