@@ -1,3 +1,5 @@
+#!/usr/bin/env python
+
 import argparse
 import sqlite3 as sql3
 import pandas as pd

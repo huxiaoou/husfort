@@ -1,3 +1,5 @@
+#!/usr/bin/env python
+
 from rich.console import Console
 from rich.table import Table
 
