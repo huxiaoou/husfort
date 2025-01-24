@@ -1,10 +1,15 @@
 if __name__ == "__main__":
     import pandas as pd
+    import argparse
     from random import randint
     from husfort.qplot import CPlotLines, CPlotBarsV, CPlotBarsH
 
+    arg_parser = argparse.ArgumentParser()
+    arg_parser.add_argument("--dir", required=True, type=str, help="Directory to save data")
+    args = arg_parser.parse_args()
+
     test_size = 60
-    test_save_dir = r"E:\TMP"
+    test_save_dir = args.dir
 
     data = pd.DataFrame(
         {
