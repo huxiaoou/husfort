@@ -14,6 +14,7 @@ def create_data(nrow: int, ncol: int, cnames: list[str], hist_dates: list[str],
 
 
 if __name__ == "__main__":
+    import argparse
     from loguru import logger
     from husfort.qutility import SFY
     from husfort.qcalendar import CCalendar
@@ -21,12 +22,19 @@ if __name__ == "__main__":
     from husfort.qh5 import CDbHDF5PlusTDates
 
     define_logger()
+    arg_parser = argparse.ArgumentParser()
+    arg_parser.add_argument("--calendar", type=str, required=True, help="path for calendar")
+    arg_parser.add_argument("--bgn", type=str, default="20120101", help="begin date, format: YYYYMMDD")
+    arg_parser.add_argument("--stp", type=str, default="20250101", help="stop  date, format: YYYYMMDD")
+    arg_parser.add_argument("--dir", type=str, required=True, help="directory to save database")
+    arg_parser.add_argument("--name", type=str, required=True, help="database name")
+    args = arg_parser.parse_args()
 
-    calendar_path = r"E:\Deploy\Data\Calendar\cne_calendar.csv"
+    calendar_path = args.calendar
     calendar = CCalendar(calendar_path)
-    h_dates = calendar.get_iter_list(bgn_date="20120101", stp_date="20250101")
+    h_dates = calendar.get_iter_list(bgn_date=args.bgn, stp_date=args.stp)
 
-    db_save_dir, db_name = r"E:\tmp", "test.h5"
+    db_save_dir, db_name = args.dir, args.name
     table_name = "grp1/grp2/testTable"
     nr, nc = 20, 5
     cnms = [f"C{_:02d}" for _ in range(nc)]
