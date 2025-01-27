@@ -1,5 +1,5 @@
 function Add-To-Env-Path {
-    param(        [string]$Directory    )
+    param([string]$Directory)
 
     # Check if the directory is already in the PATH
     if ($env:Path -split ';' -notcontains $Directory) {
@@ -36,8 +36,8 @@ $custom_py_dir = Read-Host -Prompt "Please input the full path for the directory
 Add-To-Env-Path $custom_py_dir
 Find-And-New-Dir $custom_py_dir
 
-Copy-To-Dir -src src/husfort/utility/get_datetime_fromtimestamp.py -dst $custom_py_dir
-Copy-To-Dir -src src/husfort/utility/view_colors.py -dst $custom_py_dir
-Copy-To-Dir -src src/husfort/utility/view_csv.py -dst $custom_py_dir
-Copy-To-Dir -src src/husfort/utility/view_h5.py -dst $custom_py_dir
-Copy-To-Dir -src src/husfort/utility/view_sql.py -dst $custom_py_dir
+Copy-To-Dir -Src src/husfort/utility/get_datetime_fromtimestamp.py -Dst $custom_py_dir
+Copy-To-Dir -Src src/husfort/utility/view_colors.py -Dst $custom_py_dir
+Copy-To-Dir -Src src/husfort/utility/view_csv.py -Dst $custom_py_dir
+Copy-To-Dir -Src src/husfort/utility/view_h5.py -Dst $custom_py_dir
+Copy-To-Dir -Src src/husfort/utility/view_sql.py -Dst $custom_py_dir
