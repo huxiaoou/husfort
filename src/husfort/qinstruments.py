@@ -97,8 +97,8 @@ class CInstruMgr(object):
         else:
             raise ValueError(f"Invalid cformat = {cformat}.")
 
-    def get_exchange_chs(self, instrument_id: str) -> str:
-        exchange_id_full = self.get_exchange(instrument_id, cformat="VANILLA")
+    def get_exchange_chs(self, instrumentId: str) -> str:
+        exchange_id_full = self.get_exchange(instrumentId, cformat="VANILLA")
         exchange_id_chs = {
             "DCE": "大商所",
             "CZCE": "郑商所",
@@ -112,11 +112,14 @@ class CInstruMgr(object):
     def get_windId(self, instrument_id: str) -> str:
         return self.mgr[instrument_id].windId
 
-    def get_ngt_sec_end_hour(self, instrument_id: str):
-        return self.instruments_data.at[instrument_id, "ngtSecEndHour"]
+    def get_tushareId(self, instrument_id: str) -> str:
+        return self.mgr[instrument_id].tushareId
 
-    def get_ngt_sec_end_minute(self, instrument_id: str):
-        return self.instruments_data.at[instrument_id, "ngtSecEndMinute"]
+    def has_ngt_sec(self, instrumentId: str) -> bool:
+        return self.mgr[instrumentId].hasNgtSec == 1
+
+    def has_day_brk(self, instrumentId: str) -> bool:
+        return self.mgr[instrumentId].hasDayBrk == 1
 
     def convert_contract_from_vanilla(self, contract: str, cformat: Literal["WIND", "TUSHARE"]) -> str:
         """
