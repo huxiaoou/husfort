@@ -44,6 +44,12 @@ def parse_args():
         help="conditions to filter, accepted by pandas.query "
         "like \"(instrument = 'a' | instrument = 'd') & (trade_date <= '20120131')\" ",
     )
+    args_parser.add_argument(
+        "--header",
+        type=int,
+        default=0,
+        help="row number of headers, use -1 if there is no header in the source file"
+    )
     _args = args_parser.parse_args()
     return _args
 
@@ -60,7 +66,7 @@ if __name__ == "__main__":
         pd.set_option("display.max_columns", args.maxcols)
 
     col_names = args.vars.split(",") if args.vars else []
-    df = pd.read_csv(args.path)
+    df = pd.read_csv(args.path, header=args.header if args.header >= 0 else None)
     if args.where:
         df = df.query(args.where)
     if col_names:
