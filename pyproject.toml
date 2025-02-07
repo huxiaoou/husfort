@@ -15,7 +15,7 @@ classifiers = [
     "Programming Language :: Python :: 3",
     "Operating System :: OS Independent",
 ]
-dependencies = ["numpy", "pandas", "matplotlib", "scipy", "loguru", "rich"]
+dependencies = ["numpy", "pandas", "matplotlib", "scipy", "loguru", "rich", "paramiko", "scp"]
 license = { file = "LICENSE" }
 
 [project.urls]

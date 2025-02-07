@@ -10,6 +10,7 @@ src/husfort/qlog.py
 src/husfort/qmails.py
 src/husfort/qoptimization.py
 src/husfort/qplot.py
+src/husfort/qremote.py
 src/husfort/qsimulation.py
 src/husfort/qsqlite.py
 src/husfort/qutility.py
@@ -25,6 +26,7 @@ src/husfort/tests/test_qinstruments.py
 src/husfort/tests/test_qlog.py
 src/husfort/tests/test_qoptimization.py
 src/husfort/tests/test_qplot.py
+src/husfort/tests/test_qremote.py
 src/husfort/tests/test_qsqlite.py
 src/husfort/utility/__init__.py
 src/husfort/utility/get_datetime_fromtimestamp.py

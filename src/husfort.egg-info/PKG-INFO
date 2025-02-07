@@ -691,6 +691,8 @@ Requires-Dist: matplotlib
 Requires-Dist: scipy
 Requires-Dist: loguru
 Requires-Dist: rich
+Requires-Dist: paramiko
+Requires-Dist: scp
 
 # Description
 

@@ -4,3 +4,5 @@ matplotlib
 scipy
 loguru
 rich
+paramiko
+scp
