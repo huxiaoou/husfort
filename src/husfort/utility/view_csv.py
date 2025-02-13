@@ -5,7 +5,7 @@ import pandas as pd
 
 
 def parse_args():
-    args_parser = argparse.ArgumentParser(description="A python script to view hdf5")
+    args_parser = argparse.ArgumentParser(description="A python script to view CSV OR EXCEL files")
     args_parser.add_argument(
         "--path",
         type=str,
@@ -66,7 +66,10 @@ if __name__ == "__main__":
         pd.set_option("display.max_columns", args.maxcols)
 
     col_names = args.vars.split(",") if args.vars else []
-    df = pd.read_csv(args.path, header=args.header if args.header >= 0 else None)
+    if args.path.endswith(".xls") or args.path.endswith(".xlsx"):
+        df = pd.read_excel(args.path, header=args.header if args.header >= 0 else None)
+    else:
+        df = pd.read_csv(args.path, header=args.header if args.header >= 0 else None)
     if args.where:
         df = df.query(args.where)
     if col_names:
