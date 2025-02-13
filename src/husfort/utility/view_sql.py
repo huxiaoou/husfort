@@ -6,7 +6,7 @@ import pandas as pd
 
 
 def parse_args():
-    args_parser = argparse.ArgumentParser(description="A python script to view hdf5")
+    args_parser = argparse.ArgumentParser(description="A python script to view sqlite database")
     args_parser.add_argument(
         "--lib",
         type=str,
