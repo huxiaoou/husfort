@@ -14,6 +14,7 @@ src/husfort/qremote.py
 src/husfort/qsimulation.py
 src/husfort/qsqlite.py
 src/husfort/qutility.py
+src/husfort/qviewer_pnl.py
 src/husfort.egg-info/PKG-INFO
 src/husfort.egg-info/SOURCES.txt
 src/husfort.egg-info/dependency_links.txt
@@ -28,6 +29,7 @@ src/husfort/tests/test_qoptimization.py
 src/husfort/tests/test_qplot.py
 src/husfort/tests/test_qremote.py
 src/husfort/tests/test_qsqlite.py
+src/husfort/tests/test_qviewer_pnl.py
 src/husfort/utility/__init__.py
 src/husfort/utility/get_datetime_fromtimestamp.py
 src/husfort/utility/view_colors.py
