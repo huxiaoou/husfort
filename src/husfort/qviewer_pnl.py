@@ -160,7 +160,7 @@ class CManagerViewer:
     def new_screen(self) -> bool:
         return self.config.general.NewScreen == 1
 
-    def set_color(self, x: float) -> tuple[str, str, str, str]:
+    def pick_color(self, x: float) -> tuple[str, str, str, str]:
         if x > 0:
             return (self.config.color.OtherFontPos,
                     self.config.color.OtherBackgroundPos,
@@ -187,7 +187,7 @@ class CManagerViewer:
             base_val += pos.base_val
             last_val += pos.last_val
             float_pnl += pos.float_pnl
-            color_other_font, color_other_bg, color_pnl_font, color_pnl_bg = self.set_color(pos.float_pnl)
+            color_other_font, color_other_bg, color_pnl_font, color_pnl_bg = self.pick_color(pos.float_pnl)
             sty_other, sty_pnl = f"[{color_other_font} on {color_other_bg}]", f"[{color_pnl_font} on {color_pnl_bg}]"
             rows.append(CRow(
                 contractId=f"{sty_other}{pos.contract.contractId}",
@@ -197,11 +197,11 @@ class CManagerViewer:
                 last=f"{sty_other}{pos.last_price:10.2f}",
                 base_val=f"{sty_other}{pos.base_val:12.2f}",
                 last_val=f"{sty_other}{pos.last_val:12.2f}",
-                float_pnl=f"{sty_other}{pos.float_pnl:10.2f}",
+                float_pnl=f"{sty_pnl}{pos.float_pnl:10.2f}",
             ))
 
         # set footer
-        _, _, color_pnl_font, color_pnl_bg = self.set_color(float_pnl)
+        _, _, color_pnl_font, color_pnl_bg = self.pick_color(float_pnl)
         sty_footer = f"[{color_pnl_font} on {color_pnl_bg}]"
         footer = CRow(
             contractId=f"{sty_footer}{'SUM'.rjust(8)}",
