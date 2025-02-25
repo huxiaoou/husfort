@@ -146,7 +146,8 @@ class CRow:
 
 
 class CManagerViewer:
-    def __init__(self, positions: list[CPosition], config: CCfg):
+    def __init__(self, positions: list[CPosition], config: CCfg, desc: str = "PNL INCREMENT"):
+        self.desc = desc
         self.positions: list[CPosition] = positions
         self.user_choice: str = ""
         self.pos_and_quotes_df = pd.DataFrame()
@@ -218,7 +219,7 @@ class CManagerViewer:
     def __generate_table(self) -> Table:
         rows, footer = self.__update_rows_and_footer()
         table = Table(
-            title=f"\nPNL INCREMENT - {dt.datetime.now().strftime('%Y-%m-%d %H:%M:%S.%f')[:-3]}",
+            title=f"\n{self.desc} - {dt.datetime.now().strftime('%Y-%m-%d %H:%M:%S.%f')[:-3]}",
             caption="Press Ctrl + C to quit ...",
             box=HORIZONTALS,
             title_style=f"bold {self.config.color.TitleFont}",
