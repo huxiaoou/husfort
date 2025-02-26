@@ -110,7 +110,10 @@ class CPosition:
 
     @property
     def float_pnl(self) -> float:
-        return self.last_val - self.base_val
+        if pd.isna(p := (self.last_val - self.base_val)):
+            return 0
+        else:
+            return p
 
     def __eq__(self, other: "CPosition"):
         return self.float_pnl == other.float_pnl
@@ -250,7 +253,8 @@ class CManagerViewer:
 
     def update_from_quotes(self):
         for pos, quote in zip(self.pos_and_quotes_df["pos"], self.pos_and_quotes_df["quote"]):
-            pos.last_price = quote.last_price
+            if not pd.isna(quote.last_price):
+                pos.last_price = quote.last_price
         self.pos_and_quotes_df.sort_values(by="pos", ascending=False, inplace=True)
         return 0
 
