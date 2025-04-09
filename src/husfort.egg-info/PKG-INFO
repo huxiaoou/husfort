@@ -1,4 +1,4 @@
-Metadata-Version: 2.2
+Metadata-Version: 2.4
 Name: husfort
 Version: 1.0.0
 Summary: Handy & Utility Solution For Operation, Research and Trading
@@ -693,6 +693,7 @@ Requires-Dist: loguru
 Requires-Dist: rich
 Requires-Dist: paramiko
 Requires-Dist: scp
+Dynamic: license-file
 
 # Description
 
