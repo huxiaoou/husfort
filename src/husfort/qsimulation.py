@@ -25,12 +25,13 @@ def gen_nav_db(save_dir: str, save_id: str) -> CDbStruct:
                 CSqlVar("last_nav", "REAL"),
                 CSqlVar("nav", "REAL"),
                 CSqlVar("navps", "REAL"),
+                CSqlVar("ret", "REAL"),
             ]
         )
     )
 
 
-class TExePrice(StrEnum):
+class TExePriceType(StrEnum):
     OPEN = "open"
     CLOSE = "close"
 
@@ -165,6 +166,7 @@ class CMgrMktData:
             mode="r",
         )
         data = sqldb.read()
+        data[["open", "close", "settle"]] = data[["open", "close", "settle"]].bfill(axis=1)
         keys = ["trade_date", "ts_code"]
         self.md: dict[tuple[str, str], dict] = data.set_index(keys).to_dict(orient="index")
         logger.info(f"Market data loaded")
@@ -189,12 +191,12 @@ class CMgrMktData:
 
 
 class CSignal:
-    def __init__(self, sid: str, signal: CDbStruct):
+    def __init__(self, sid: str, signal_db_struct: CDbStruct):
         self.sid = sid
         sqldb = CMgrSqlDb(
-            db_save_dir=signal.db_save_dir,
-            db_name=signal.db_name,
-            table=signal.table,
+            db_save_dir=signal_db_struct.db_save_dir,
+            db_name=signal_db_struct.db_name,
+            table=signal_db_struct.table,
             mode="r",
         )
         data = sqldb.read()
@@ -236,6 +238,14 @@ class CAccount:
     def nav(self) -> float:
         return self.init_cash + self.tot_realized_pnl + self.tot_unrealized_pnl
 
+    @property
+    def navps(self) -> float:
+        return self.nav / self.init_cash
+
+    @property
+    def ret(self) -> float:
+        return self.nav / self.last_nav - 1
+
     def update_pnl(self, this_day_unrealized_pnl: float, this_day_realized_pnl: float, this_day_cost: float):
         self.tot_realized_pnl += (this_day_realized_pnl - this_day_cost)
         self.tot_unrealized_pnl = this_day_unrealized_pnl
@@ -251,7 +261,8 @@ class CAccount:
             "tot_unrealized_pnl": self.tot_unrealized_pnl,
             "last_nav": self.last_nav,
             "nav": self.nav,
-            "navps": self.nav / self.init_cash,
+            "navps": self.navps,
+            "ret": self.ret,
         }
         self.snapshots.append(snapshot)
         return 0
@@ -273,16 +284,17 @@ class CSimulation:
     def __init__(
             self,
             signal: CSignal,
-            account: CAccount,
-            exe_price_type: TExePrice,
+            init_cash: float,
+            cost_rate: float,
+            exe_price_type: TExePriceType,
             mgr_instru: CInstruMgr,
             mgr_maj_contract: CMgrMajContract,
             mgr_mkt_data: CMgrMktData,
             sim_save_dir: str
     ):
         self.signal: CSignal = signal
-        self.account: CAccount = account
-        self.exe_price_type: TExePrice = exe_price_type
+        self.account: CAccount = CAccount(init_cash, cost_rate)
+        self.exe_price_type: TExePriceType = exe_price_type
         self.mgr_instru: CInstruMgr = mgr_instru
         self.mgr_maj_contract: CMgrMajContract = mgr_maj_contract
         self.mgr_mkt_data: CMgrMktData = mgr_mkt_data
