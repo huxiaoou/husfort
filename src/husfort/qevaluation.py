@@ -1,5 +1,6 @@
 import numpy as np
 import pandas as pd
+from typing import Literal
 from dataclasses import dataclass
 
 '''
@@ -50,8 +51,10 @@ class CIndicatorsWithDict(CIndicatorsGeneric):
 
 
 class CNAV(object):
-    def __init__(self, input_srs: pd.Series, input_type: str, annual_factor: float = 250,
-                 annual_rf_rate: float = 0, ret_scale_display: float = 100):
+    def __init__(
+            self, input_srs: pd.Series, input_type: Literal["NAV", "RET"],
+            annual_factor: float = 250, annual_rf_rate: float = 0, ret_scale_display: float = 100,
+    ):
         """
 
         :param input_srs: A. if input_type == "NAV":
@@ -98,6 +101,7 @@ class CNAV(object):
         self.annual_volatility: CIndicators = CIndicators(ret_scale_display, display_fmt=".2f")
         self.sharpe_ratio: CIndicators = CIndicators(1, display_fmt=".3f")
         self.calmar_ratio: CIndicators = CIndicators(1, display_fmt=".3f")
+        self.score: CIndicators = CIndicators(1, display_fmt=".3f")
         self.value_at_risks: CIndicatorsWithDict = CIndicatorsWithDict(ret_scale_display, display_fmt=".3f")
 
         # secondary
@@ -171,6 +175,16 @@ class CNAV(object):
             self.calmar_ratio.avlb = True
         return 0
 
+    def cal_score(self):
+        if not self.score.avlb:
+            if self.sharpe_ratio.avlb and self.calmar_ratio.avlb:
+                self.score.val = self.sharpe_ratio.val + self.calmar_ratio.val
+                self.score.avlb = True
+            else:
+                print(f"Sharpe ratio is {'' if self.sharpe_ratio.avlb else 'not '}available")
+                print(f"Calmar ratio is {'' if self.calmar_ratio.avlb else 'not '}available")
+        return 0
+
     def cal_longest_drawdown_duration(self):
         if self.longest_drawdown_duration.avlb:
             return 0
@@ -239,6 +253,7 @@ class CNAV(object):
         self.cal_sharpe_ratio()
         self.cal_max_drawdown_scale()
         self.cal_calmar_ratio()
+        self.cal_score()
 
         if "ldd" not in excluded:
             self.cal_longest_drawdown_duration()
@@ -271,6 +286,9 @@ class CNAV(object):
         if self.calmar_ratio.avlb:
             d.update({"calmar": self.calmar_ratio.val})
 
+        if self.score.avlb:
+            d.update({"score": self.score.val})
+
         if self.max_drawdown_scale.avlb:
             d.update({
                 "mdd": self.max_drawdown_scale.val,
@@ -293,7 +311,7 @@ class CNAV(object):
             d.update(self.value_at_risks.val)
         return d
 
-    def reformat_to_display(self):
+    def reformat_to_display(self) -> dict:
         d = {}
         if self.return_mean.avlb:
             d.update({"retMean": self.return_mean.display()})
@@ -315,6 +333,9 @@ class CNAV(object):
 
         if self.calmar_ratio.avlb:
             d.update({"calmar": self.calmar_ratio.display()})
+
+        if self.score.avlb:
+            d.update({"score": self.score.display()})
 
         if self.max_drawdown_scale.avlb:
             d.update({
