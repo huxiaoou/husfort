@@ -11,6 +11,7 @@ src/husfort/qmails.py
 src/husfort/qoptimization.py
 src/husfort/qplot.py
 src/husfort/qremote.py
+src/husfort/qsimquick.py
 src/husfort/qsimulation.py
 src/husfort/qsqlite.py
 src/husfort/qutility.py
