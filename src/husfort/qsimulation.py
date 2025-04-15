@@ -112,7 +112,7 @@ class CPosition:
                 raise ValueError(f"trade qty {trade.qty} > pos qty {self.qty}")
             else:
                 self.qty -= trade.qty
-            realized_pnl = (trade.exe_price - self.cost_price) * self.multiplier * self.qty * float(self.key.direction)
+            realized_pnl = (trade.exe_price - self.cost_price) * self.multiplier * trade.qty * float(self.key.direction)
         else:
             raise ValueError(f"unknown offset = {trade.offset}")
         return realized_pnl, cost
