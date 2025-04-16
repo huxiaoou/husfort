@@ -5,6 +5,7 @@ import functools
 import datetime as dt
 from itertools import islice
 from loguru import logger
+from typing import Any
 
 
 def get_mix_string_len(mix_string: str, expected_len: int):
@@ -23,7 +24,12 @@ def get_mix_string_len(mix_string: str, expected_len: int):
 
 
 def SetFontColor(c):
-    def inner(s: str | int | float | dt.datetime):
+    def inner(s: str | int | float | dt.datetime | Any):
+        """
+
+        :param s: Any classes with __format__ or __str__ or __repr__ method defined
+        :return:
+        """
         return f"\033[{c}m{s}\033[0m"
 
     return inner

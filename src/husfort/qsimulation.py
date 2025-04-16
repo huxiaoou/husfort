@@ -4,7 +4,7 @@ from dataclasses import dataclass
 from enum import IntEnum, StrEnum
 from loguru import logger
 from husfort.qcalendar import CCalendar
-from husfort.qutility import check_and_makedirs
+from husfort.qutility import check_and_makedirs, SFG, SFY
 from husfort.qinstruments import CInstruMgr
 from husfort.qsqlite import CMgrSqlDb, CDbStruct, CSqlTable, CSqlVar
 
@@ -69,6 +69,15 @@ class CTrade:
         return self.exe_price * self.multiplier * self.qty * cost_rate
 
 
+def print_trades(trades: list[CTrade], color: bool = True):
+    for ti, trade in enumerate(trades):
+        if color:
+            print(f"| {ti:>04d} | {SFG(trade)} |")
+        else:
+            print(f"| {ti:>04d} | {trade} |")
+    return 0
+
+
 @dataclass
 class CPosition:
     key: CPosKey
@@ -122,34 +131,26 @@ class CPosition:
         return 0
 
 
+TPositions = dict[CPosKey, CPosition]
+
+
+def print_positions(positions: TPositions, color: bool = True):
+    for key, pos in positions.items():
+        if color:
+            print(f"| {SFY(key)} : {SFG(pos)} |")
+        else:
+            print(f"| {key} : {pos} |")
+    return 0
+
+
 """
 ------ manger major contract ------ 
 """
 
 
-class CMgrMajContract:
-    def __init__(self, universe: list[str], preprocess: CDbStruct):
-        self.major_data: dict[str, dict[str, str]] = {}
-        for instrument in universe:
-            db_struct = preprocess.copy_to_another(another_db_name=f"{instrument}.db")
-            sqldb = CMgrSqlDb(
-                db_save_dir=db_struct.db_save_dir,
-                db_name=db_struct.db_name,
-                table=db_struct.table,
-                mode="r",
-            )
-            data = sqldb.read(value_columns=["trade_date", "ticker_major"])
-            self.major_data[instrument] = data.set_index("trade_date")["ticker_major"].to_dict()
-        logger.info(f"Major contract loaded")
-
+class CMgrMajContractBase:
     def get_contract(self, trade_date: str, instrument: str) -> str:
-        """
-
-        :param trade_date: like "20250407"
-        :param instrument: "CU.SHF"
-        :return: "CU2506.SHF"
-        """
-        return self.major_data[instrument][trade_date]
+        raise NotImplementedError
 
 
 """
@@ -157,32 +158,9 @@ class CMgrMajContract:
 """
 
 
-class CMgrMktData:
-    def __init__(self, fmd: CDbStruct):
-        sqldb = CMgrSqlDb(
-            db_save_dir=fmd.db_save_dir,
-            db_name=fmd.db_name,
-            table=fmd.table,
-            mode="r",
-        )
-        data = sqldb.read()
-        data[["open", "close", "settle"]] = data[["open", "close", "settle"]].bfill(axis=1)
-        keys = ["trade_date", "ts_code"]
-        self.md: dict[tuple[str, str], dict] = data.set_index(keys).to_dict(orient="index")
-        logger.info(f"Market data loaded")
-
+class CMgrMktDataBase:
     def get_md(self, trade_date: str, contract: str, md: str) -> int | float:
-        """
-
-        :param trade_date:
-        :param contract:
-        :param md:  ["pre_close", "pre_settle",
-                     "open", "high", "low", "close", "settle",
-                     "vol", "amount", "oi"]
-        :return:
-        """
-        # return self.md[instrument][(trade_date, contract)][md]
-        return self.md[(trade_date, contract)][md]
+        raise NotImplementedError
 
 
 """
@@ -190,38 +168,18 @@ class CMgrMktData:
 """
 
 
-class CSignal:
-    def __init__(self, sid: str, signal_db_struct: CDbStruct):
-        self.sid = sid
-        sqldb = CMgrSqlDb(
-            db_save_dir=signal_db_struct.db_save_dir,
-            db_name=signal_db_struct.db_name,
-            table=signal_db_struct.table,
-            mode="r",
-        )
-        data = sqldb.read()
-        self.signal: dict[str, dict[str, float]] = {}
-        for trade_date, trade_date_data in data.groupby("trade_date"):
-            trade_date: str
-            trade_date_data: pd.DataFrame
-            d: pd.DataFrame = trade_date_data[["instrument", "weight"]].set_index("instrument")
-            self.signal[trade_date] = d["weight"].to_dict()
+class CSignalBase:
+    @property
+    def sid(self) -> str:
+        raise NotImplementedError
 
     def get_signal(self, trade_date: str) -> dict[str, float]:
-        return self.signal[trade_date]
+        raise NotImplementedError
 
 
 """
 ------ account ------
 """
-
-TPositions = dict[CPosKey, CPosition]
-
-
-def print_positions(positions: TPositions):
-    for key, pos in positions.items():
-        print(f"{key}: {pos}")
-    return 0
 
 
 class CAccount:
@@ -281,23 +239,39 @@ class CAccount:
 
 
 class CSimulation:
+    """
+    This class provides a complex method to test signals using market data.
+    0.  this class DOES NOT support increment test. In other words, user CAN NOT use this class to do
+        daily increment to get a quick result.
+    1.  the results may be a slightly WORSE than the results in husfort.qsimquick because of:
+        1.1 major contract shifting is considered.
+        1.2 a specific quantity instead of a precise weight number is used.
+    2.  To use this class, user must provide the following 3 classes as input arguments when initializing.
+            (CMgrMajContract, CMgrMktData, CSignal)
+        To do this, user can:
+        2.1 EITHER import CMgrMajContract, CMgrMktData, CSignal from husfort.qsimulation
+        2.2 OR Write their own version of these 3 classes by inheriting from CMgrMajContractBase, CMgrMktDataBase, CSignalBase
+            and realize corresponding virtual methods.
+
+    """
+
     def __init__(
             self,
-            signal: CSignal,
+            signal: CSignalBase,
             init_cash: float,
             cost_rate: float,
             exe_price_type: TExePriceType,
             mgr_instru: CInstruMgr,
-            mgr_maj_contract: CMgrMajContract,
-            mgr_mkt_data: CMgrMktData,
+            mgr_maj_contract: CMgrMajContractBase,
+            mgr_mkt_data: CMgrMktDataBase,
             sim_save_dir: str
     ):
-        self.signal: CSignal = signal
+        self.signal: CSignalBase = signal
         self.account: CAccount = CAccount(init_cash, cost_rate)
         self.exe_price_type: TExePriceType = exe_price_type
         self.mgr_instru: CInstruMgr = mgr_instru
-        self.mgr_maj_contract: CMgrMajContract = mgr_maj_contract
-        self.mgr_mkt_data: CMgrMktData = mgr_mkt_data
+        self.mgr_maj_contract: CMgrMajContractBase = mgr_maj_contract
+        self.mgr_mkt_data: CMgrMktDataBase = mgr_mkt_data
         self.sim_save_dir = sim_save_dir
 
     def save_nav(self, nav_data: pd.DataFrame, calendar: CCalendar):
@@ -416,3 +390,90 @@ class CSimulation:
         snapshots = self.account.export_snapshots()
         self.save_nav(snapshots, calendar)
         return 0
+
+
+"""
+------ classes for CTA V4 ------
+Not necessary for all users
+users could define their own classes
+by inherit from base class
+--------------------------------
+"""
+
+
+class CMgrMajContract(CMgrMajContractBase):
+    def __init__(self, universe: list[str], preprocess: CDbStruct):
+        self.major_data: dict[str, dict[str, str]] = {}
+        for instrument in universe:
+            db_struct = preprocess.copy_to_another(another_db_name=f"{instrument}.db")
+            sqldb = CMgrSqlDb(
+                db_save_dir=db_struct.db_save_dir,
+                db_name=db_struct.db_name,
+                table=db_struct.table,
+                mode="r",
+            )
+            data = sqldb.read(value_columns=["trade_date", "ticker_major"])
+            self.major_data[instrument] = data.set_index("trade_date")["ticker_major"].to_dict()
+        logger.info(f"Major contract loaded")
+
+    def get_contract(self, trade_date: str, instrument: str) -> str:
+        """
+
+        :param trade_date: like "20250407"
+        :param instrument: "CU.SHF"
+        :return: "CU2506.SHF"
+        """
+        return self.major_data[instrument][trade_date]
+
+
+class CMgrMktData(CMgrMktDataBase):
+    def __init__(self, fmd: CDbStruct):
+        sqldb = CMgrSqlDb(
+            db_save_dir=fmd.db_save_dir,
+            db_name=fmd.db_name,
+            table=fmd.table,
+            mode="r",
+        )
+        data = sqldb.read()
+        data[["open", "close", "settle"]] = data[["open", "close", "settle"]].bfill(axis=1)
+        keys = ["trade_date", "ts_code"]
+        self.md: dict[tuple[str, str], dict] = data.set_index(keys).to_dict(orient="index")
+        logger.info(f"Market data loaded")
+
+    def get_md(self, trade_date: str, contract: str, md: str) -> int | float:
+        """
+
+        :param trade_date:
+        :param contract:
+        :param md:  ["pre_close", "pre_settle",
+                     "open", "high", "low", "close", "settle",
+                     "vol", "amount", "oi"]
+        :return:
+        """
+        # return self.md[instrument][(trade_date, contract)][md]
+        return self.md[(trade_date, contract)][md]
+
+
+class CSignal(CSignalBase):
+    def __init__(self, sid: str, signal_db_struct: CDbStruct):
+        self._sid = sid
+        sqldb = CMgrSqlDb(
+            db_save_dir=signal_db_struct.db_save_dir,
+            db_name=signal_db_struct.db_name,
+            table=signal_db_struct.table,
+            mode="r",
+        )
+        data = sqldb.read()
+        self.signal: dict[str, dict[str, float]] = {}
+        for trade_date, trade_date_data in data.groupby("trade_date"):
+            trade_date: str
+            trade_date_data: pd.DataFrame
+            d: pd.DataFrame = trade_date_data[["instrument", "weight"]].set_index("instrument")
+            self.signal[trade_date] = d["weight"].to_dict()
+
+    @property
+    def sid(self) -> str:
+        return self._sid
+
+    def get_signal(self, trade_date: str) -> dict[str, float]:
+        return self.signal[trade_date]

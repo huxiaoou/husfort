@@ -57,6 +57,16 @@ class CTestReturnLoaderBase:
 
 
 class CSimQuick:
+    """
+    This class provides a quick method to test signals using test_returns and signals only.
+    0.  this class support increment test. In other words, user can use this class to do daily increment
+        to get a quick result.
+    1.  the results may be a slightly BETTER than the results in husfort.qsimulation because of:
+        1.1 major contract shifting is NOT considered, less cost is calculated.
+        1.2 a precise weight number instead of a specific quantity is used.
+    2.  Always plot a nav curve since nav_plot_bgn_date.
+    """
+
     def __init__(
             self,
             signals_loader: CSignalsLoaderBase,
@@ -64,6 +74,15 @@ class CSimQuick:
             cost_rate: float,
             sims_quick_dir: str,
     ):
+        """
+
+        :param signals_loader: user should inherit it from CSignalsLoaderBase,
+                               and provide details to methods: load and signal_id.
+        :param test_return_loader: user should inherit it from CTestReturnLoaderBase,
+                                   and provide details to methods: load, shift and ret_name.
+        :param cost_rate:
+        :param sims_quick_dir:
+        """
         self.signals_loader = signals_loader
         self.test_return_loader = test_return_loader
         self.cost_rate = cost_rate
@@ -165,8 +184,7 @@ class CSimQuick:
         artist.save_and_close()
         return 0
 
-    def main(self, bgn_date: str, stp_date: str, calendar: CCalendar):
-        _nav_plot_bgn_date = "20120101"
+    def main(self, bgn_date: str, stp_date: str, calendar: CCalendar, nav_plot_bgn_date: str = "20120104"):
         sig_dates, exe_dates = self.get_dates(bgn_date, stp_date, calendar)
         base_bgn_date, base_stp_date = sig_dates[0], calendar.get_next_date(sig_dates[-1], shift=1)
         last_date = calendar.get_next_date(bgn_date, shift=-1)
@@ -176,6 +194,6 @@ class CSimQuick:
         last_nav = self.load_nav_at_date(trade_date=last_date)
         self.update_nav(net_result, last_nav)
         self.save_nav(net_result, calendar)
-        nav_data = self.load_nav_range(bgn_date=_nav_plot_bgn_date, stp_date=stp_date)
+        nav_data = self.load_nav_range(bgn_date=nav_plot_bgn_date, stp_date=stp_date)
         self.plot(nav_data=nav_data)
         return 0
