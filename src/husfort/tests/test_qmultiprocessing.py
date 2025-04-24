@@ -17,6 +17,7 @@ def worker(agent_queue: CAgentQueue, total: int, minimum_sleep: float):
     for i in range(total):
         time.sleep(minimum_sleep * randint(a=1, b=3))
         agent_queue.set_completed(i + 1)  # agent_queue.set_advance(1)
+    agent_queue.set_log(f"This is log for {agent_queue.task_id}")
     agent_queue.set_status(EStatusWorker.FINISHED)
     return 0
 
@@ -29,7 +30,7 @@ if __name__ == "__main__":
         TTask((worker, (10, 0.4))),
     ]
     print("Start tasks in mul-process model")
-    mul_process_for_tasks(tasks=tasks)
+    mul_process_for_tasks(tasks=tasks, callback_log=lambda msg: print(msg))
     print("\n", end="")
     print("Start tasks in uni-process model")
-    uni_process_for_tasks(tasks=tasks)
+    uni_process_for_tasks(tasks=tasks, callback_log=lambda msg: print(msg))

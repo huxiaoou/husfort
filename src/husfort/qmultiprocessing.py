@@ -18,6 +18,7 @@ class EOperationQueue(IntEnum):
     SET_ADVANCE = 2
     SET_COMPLETE = 3
     SET_STATUS = 4
+    SET_LOG = 5
 
 
 @dataclass
@@ -57,8 +58,24 @@ class CAgentQueue:
         self.queue.put(msg)
         return 0
 
+    def set_log(self, log: str):
+        msg = TMsg(self.task_id, EOperationQueue.SET_LOG, log)
+        self.queue.put(msg)
+        return 0
 
-def update_progress(pb: Progress, size: int, queue: Queue, seconds_between_check: float):
+
+def update_mul_progress(
+        pb: Progress, size: int, queue: Queue, seconds_between_check: float, callback_log: Callable = None,
+):
+    """
+
+    :param pb:
+    :param size: set size = 1 to use for single task
+    :param queue:
+    :param seconds_between_check:
+    :param callback_log:
+    :return:
+    """
     completed = 0
     while completed < size:
         if not queue.empty():
@@ -74,7 +91,15 @@ def update_progress(pb: Progress, size: int, queue: Queue, seconds_between_check
             elif msg.operation == EOperationQueue.SET_STATUS:
                 if msg.val == EStatusWorker.FINISHED:
                     completed += 1
+            elif msg.operation == EOperationQueue.SET_LOG:
+                if callback_log is not None:
+                    callback_log(msg.val)
         time.sleep(seconds_between_check)
+    return 0
+
+
+def update_uni_progress(pb: Progress, queue: Queue, seconds_between_check: float, callback_log: Callable = None):
+    update_mul_progress(pb, size=1, queue=queue, seconds_between_check=seconds_between_check, callback_log=callback_log)
     return 0
 
 
@@ -92,6 +117,7 @@ def mul_process_for_tasks(
         processes: int = None,
         bar_width: int = 100,
         seconds_between_check: float = 0.01,
+        callback_log: Callable = None,
 ):
     """
 
@@ -102,6 +128,7 @@ def mul_process_for_tasks(
                       None then the number returned by os.process_cpu_count() is used.
     :param bar_width: the width of the progress bar
     :param seconds_between_check: time duration between checks of tasks
+    :param callback_log: a function, accept a string to use as log
     :return:
     """
 
@@ -125,15 +152,11 @@ def mul_process_for_tasks(
                         error_callback=lambda e: print(e),
                     )
                 pool.close()
-                update_progress(pb, len(tasks), queue, seconds_between_check)
+                update_mul_progress(
+                    pb, size=len(tasks), queue=queue,
+                    seconds_between_check=seconds_between_check, callback_log=callback_log,
+                )
                 pool.join()
-    return 0
-
-
-def uni_process_loop(tasks: list[TTask], task_ids: list[TaskID], queue: Queue):
-    for (f, args), task_id in zip(tasks, task_ids):
-        agent_queue = CAgentQueue(task_id, queue)
-        f(agent_queue, *args)
     return 0
 
 
@@ -141,6 +164,7 @@ def uni_process_for_tasks(
         tasks: list[TTask],
         bar_width: int = 100,
         seconds_between_check: float = 0.01,
+        callback_log: Callable = None,
 ):
     """
 
@@ -149,6 +173,7 @@ def uni_process_for_tasks(
                   element in TTask, i.e. TTask.tuple.
     :param bar_width: the width of the progress bar
     :param seconds_between_check: time duration between checks of tasks
+    :param callback_log: a function, accept a string to use as log
     :return:
     """
     with Progress(
@@ -158,14 +183,18 @@ def uni_process_for_tasks(
             TimeRemainingColumn(),
             TimeElapsedColumn(),
     ) as pb:
-        task_ids = [pb.add_task(description="New Task") for _ in range(len(tasks))]
-
         if not get_start_method():
             set_start_method("spawn")
         with Manager() as manager:
             queue = manager.Queue()
-            p = Process(target=uni_process_loop, args=(tasks, task_ids, queue))
-            p.start()
-            update_progress(pb, len(tasks), queue, seconds_between_check)
-            p.join()
+            for f, args in tasks:
+                task_id = pb.add_task(description="New Task")
+                agent_queue = CAgentQueue(task_id, queue)
+                p = Process(target=f, args=(agent_queue, *args))
+                p.start()
+                update_uni_progress(
+                    pb, queue=queue,
+                    seconds_between_check=seconds_between_check, callback_log=callback_log,
+                )
+                p.join()
     return 0
