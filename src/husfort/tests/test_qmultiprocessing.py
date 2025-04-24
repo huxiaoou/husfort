@@ -28,7 +28,8 @@ if __name__ == "__main__":
         TTask((worker, (20, 0.3))),
         TTask((worker, (10, 0.4))),
     ]
-    print("Starting tasks in multiprocessing model")
+    print("Start tasks in mul-process model")
     mul_process_for_tasks(tasks=tasks)
-    print("Starting tasks not in multiprocessing model")
+    print("\n", end="")
+    print("Start tasks in uni-process model")
     uni_process_for_tasks(tasks=tasks)

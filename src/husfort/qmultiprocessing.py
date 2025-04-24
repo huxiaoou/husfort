@@ -1,5 +1,5 @@
 import time
-from multiprocessing import Pool, Queue, Manager
+from multiprocessing import Pool, Queue, Process, Manager
 from multiprocessing import set_start_method, get_start_method
 from rich.progress import Progress, TaskID, BarColumn, TimeRemainingColumn, TimeElapsedColumn
 from typing import Callable
@@ -79,6 +79,12 @@ def update_progress(pb: Progress, size: int, queue: Queue, seconds_between_check
 
 
 TTask = tuple[Callable, tuple]
+"""
++ TTask is a type designed to manage functions and their parameters. If you want to use it with
+  uni_process_for_tasks and mul_process_for_tasks, then the following 2 rules must be applied:
+    + TTask.Callable: a function, the type of its first parameter MUST be CAgentQueue
+    + TTask.Tuple: other parameters accepted by TTask.Callable, with the FIRST one EXCLUDED
+"""
 
 
 def mul_process_for_tasks(
@@ -90,8 +96,10 @@ def mul_process_for_tasks(
     """
 
     :param tasks: a TTask, the first parameter of TTask.callable must be CAgentQueue.
-                  And other parameters for the callable in TTask.tuple
-    :param processes: number of processes to use
+                  And other parameters for the callable are provided by the second
+                  element in TTask, i.e. TTask.tuple.
+    :param processes: number of processes to use, by default is None.If processes is
+                      None then the number returned by os.process_cpu_count() is used.
     :param bar_width: the width of the progress bar
     :param seconds_between_check: time duration between checks of tasks
     :return:
@@ -134,6 +142,15 @@ def uni_process_for_tasks(
         bar_width: int = 100,
         seconds_between_check: float = 0.01,
 ):
+    """
+
+    :param tasks: a TTask, the first parameter of TTask.callable must be CAgentQueue.
+                  And other parameters for the callable are provided by the second
+                  element in TTask, i.e. TTask.tuple.
+    :param bar_width: the width of the progress bar
+    :param seconds_between_check: time duration between checks of tasks
+    :return:
+    """
     with Progress(
             "[progress.description]{task.description}",
             BarColumn(bar_width=bar_width),
@@ -147,12 +164,8 @@ def uni_process_for_tasks(
             set_start_method("spawn")
         with Manager() as manager:
             queue = manager.Queue()
-            with Pool() as pool:
-                pool.apply_async(
-                    uni_process_loop, args=(tasks, task_ids, queue),
-                    error_callback=lambda e: print(e),
-                )
-                pool.close()
-                update_progress(pb, len(tasks), queue, seconds_between_check)
-                pool.join()
+            p = Process(target=uni_process_loop, args=(tasks, task_ids, queue))
+            p.start()
+            update_progress(pb, len(tasks), queue, seconds_between_check)
+            p.join()
     return 0
