@@ -165,6 +165,7 @@ def uni_process_for_tasks(
         bar_width: int = 100,
         seconds_between_check: float = 0.01,
         callback_log: Callable = None,
+        debug_mode: bool = False,
 ):
     """
 
@@ -174,6 +175,9 @@ def uni_process_for_tasks(
     :param bar_width: the width of the progress bar
     :param seconds_between_check: time duration between checks of tasks
     :param callback_log: a function, accept a string to use as log
+    :param debug_mode: set to True to enable debug mode, which make BREAKPOINT in tasks
+                       works properly. In this mode, update_uni_progress will not work,
+                       which means Progressbar will not update properly.
     :return:
     """
     with Progress(
@@ -190,11 +194,15 @@ def uni_process_for_tasks(
             for f, args in tasks:
                 task_id = pb.add_task(description="New Task")
                 agent_queue = CAgentQueue(task_id, queue)
-                p = Process(target=f, args=(agent_queue, *args))
-                p.start()
-                update_uni_progress(
-                    pb, queue=queue,
-                    seconds_between_check=seconds_between_check, callback_log=callback_log,
-                )
-                p.join()
+
+                if debug_mode:
+                    f(agent_queue, *args)
+                else:
+                    p = Process(target=f, args=(agent_queue, *args))
+                    p.start()
+                    update_uni_progress(
+                        pb, queue=queue,
+                        seconds_between_check=seconds_between_check, callback_log=callback_log,
+                    )
+                    p.join()
     return 0
