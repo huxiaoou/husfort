@@ -120,6 +120,20 @@ class CCalendar(object):
                 res[m].append(t)
         return res
 
+    def get_week_end_days_in_range(self, bgn_date: str, stp_date: str) -> list[str]:
+        res = []
+        for this_day, next_day in zip(self.__trade_dates[:-1], self.__trade_dates[1:]):
+            if this_day < bgn_date:
+                continue
+            elif this_day >= stp_date:
+                break
+            else:
+                d0 = dt.datetime.strptime(this_day, "%Y%m%d")
+                d1 = dt.datetime.strptime(next_day, "%Y%m%d")
+                if (d1 - d0).days > 1:
+                    res.append(this_day)
+        return res
+
     @staticmethod
     def move_date_string(trade_date: str, move_days: int = 1) -> str:
         """
@@ -203,13 +217,13 @@ class CSection(object):
 
 class CCalendarSection(object):
     def __init__(
-        self,
-        calendar_path: str,
-        header: int | None = None,
-        ts1_bgn_time: str = "19:00:00.000000",
-        ts1_end_time: str = "07:00:00.000000",
-        ts2_bgn_time: str = "07:00:00.000000",
-        ts2_end_time: str = "19:00:00.000000",
+            self,
+            calendar_path: str,
+            header: int | None = None,
+            ts1_bgn_time: str = "19:00:00.000000",
+            ts1_end_time: str = "07:00:00.000000",
+            ts2_bgn_time: str = "07:00:00.000000",
+            ts2_end_time: str = "19:00:00.000000",
     ):
         self.sections: list[CSection] = []
         if header:
@@ -276,7 +290,7 @@ class CCalendarSection(object):
         return (True, res) if res else (False, res)
 
     def parse_section(
-        self, using_now: bool, bgn_sec_id: str, stp_sec_id: str
+            self, using_now: bool, bgn_sec_id: str, stp_sec_id: str
     ) -> tuple[bool, tuple[CSection | None, CSection | None]]:
         if using_now:
             tp = dt.datetime.now().strftime("%Y%m%d %H:%M:%S.%f")
@@ -382,7 +396,7 @@ class CCalendarMonth(object):
         return self.trade_months[bgn_idx:stp_idx]
 
     def map_iter_dates_to_iter_month(
-        self, bgn_date: str, stp_date: str, calendar: CCalendar, exclude_last: bool = True
+            self, bgn_date: str, stp_date: str, calendar: CCalendar, exclude_last: bool = True
     ) -> list[CMonth]:
         """
 
