@@ -135,6 +135,40 @@ class CCalendar(object):
         return res
 
     @staticmethod
+    def split_by_week_end_days(
+            dates: list[str], week_end_days: list[str], ascending: bool = True,
+    ) -> dict[str, list[str]]:
+        """
+
+        :param dates:
+        :param week_end_days: must come from dates, in other words, the following two condition must be true:
+                              1.    dates = self.get_iter_list(bgn_date, stp_date)
+                              2.    week_end_days = self.get_week_end_days_in_range(bgn_date, stp_date).
+                              Or unpredicted bugs may happen.
+        :param ascending: if true, the result will be sorted by week_end_days in ascending order.
+        :return:
+        """
+        res: dict[str, list[str]] = {}
+        week_end_day_idx = len(week_end_days) - 1
+        if week_end_day_idx < 0:
+            return res
+        week_end_day = week_end_days[week_end_day_idx]
+        buffer_dates = []
+        for trade_date in dates[::-1]:
+            if trade_date <= week_end_day:
+                res[week_end_day] = buffer_dates
+                week_end_day_idx -= 1
+                if week_end_day_idx < 0:
+                    break
+                week_end_day = week_end_days[week_end_day_idx]
+                buffer_dates = []
+            buffer_dates.insert(0, trade_date)
+        if ascending:
+            return {k: res[k] for k in sorted(res)}
+        else:
+            return res
+
+    @staticmethod
     def move_date_string(trade_date: str, move_days: int = 1) -> str:
         """
 
