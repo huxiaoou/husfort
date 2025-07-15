@@ -3,6 +3,7 @@ import numpy as np
 import pandas as pd
 import matplotlib
 import matplotlib.pyplot as plt
+from typing import Literal
 
 matplotlib.use("Agg")
 plt.rcParams["font.sans-serif"] = ["SimHei"]
@@ -36,7 +37,7 @@ class CPlot(object):
         self.fig = plt.figure(figsize=self.fig_size)
         self.ax = plt.axes()
 
-    def set_title(self, title: str = None, size: int = 32, loc: str = "center"):
+    def set_title(self, title: str = None, size: int = 32, loc: Literal["left", "center", "right"] = "center"):
         """
 
         :param title:
@@ -97,7 +98,8 @@ class CPlot(object):
             rotation=xtick_label_rotation,
             direction=xtick_direction,
         )
-        self.ax.grid(visible=xgrid_visible, axis="x")
+        if xgrid_visible:
+            self.ax.grid(visible=xgrid_visible, axis="x", linestyle="--", linewidth=0.5)
         return 0
 
     def set_axis_y(
@@ -133,7 +135,8 @@ class CPlot(object):
             rotation=ytick_label_rotation,
             direction=ytick_direction,
         )
-        self.ax.grid(visible=ygrid_visible, axis="y")
+        if ygrid_visible:
+            self.ax.grid(visible=ygrid_visible, axis="y", linestyle="--", linewidth=0.5)
         return 0
 
     def add_text(self, x: float | int, y: float | int, text: str, size: int = 12):
@@ -232,7 +235,7 @@ class CPlotFromDataFrame(CPlot):
             ytick_label_rotation: int = 0,
             ytick_direction: str = "in",
             ygrid_visible: bool = False,
-            update_yticklabels: bool = True,
+            update_yticklabels: bool = False,
             using_columns_as_y: bool = True,
     ):
         other_kwargs = {
