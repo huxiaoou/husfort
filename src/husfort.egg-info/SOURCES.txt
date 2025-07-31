@@ -3,6 +3,7 @@ README.md
 pyproject.toml
 src/husfort/__init__.py
 src/husfort/qcalendar.py
+src/husfort/qdataviewer.py
 src/husfort/qevaluation.py
 src/husfort/qh5.py
 src/husfort/qinstruments.py

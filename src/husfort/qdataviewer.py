@@ -1,0 +1,188 @@
+import pandas as pd
+import sqlite3 as sql3
+import argparse
+
+
+class __CDataViewer:
+    def __init__(self):
+        self.raw_data: pd.DataFrame = pd.DataFrame()
+        self.slc_data: pd.DataFrame = pd.DataFrame()
+
+    def fetch(self, cols: list[str], where: str):
+        raise NotImplementedError
+
+    def show(
+            self,
+            head: int, tail: int,
+            max_rows: int, max_cols: int,
+            transpose: bool = False,
+    ):
+        pd.set_option("display.unicode.east_asian_width", True)
+        if max_rows > 0:
+            pd.set_option("display.max_rows", max_rows)
+        if max_cols > 0:
+            pd.set_option("display.max_columns", max_cols)
+        if head > 0:
+            if tail > 0:
+                print(
+                    f"[INF] both argument head and tail are given, (head, tail)=({head}, {tail}) "
+                    f"A concat data will be generated. If total length of data < ({head + tail}), "
+                    f"the result may be overlapped."
+                )
+                self.slc_data = pd.concat(
+                    objs=[self.slc_data.head(head), self.slc_data.tail(tail)],
+                    axis=0,
+                    ignore_index=False
+                )
+            else:
+                self.slc_data = self.slc_data.head(head)
+        else:
+            if tail > 0:
+                self.slc_data = self.slc_data.tail(tail)
+            else:
+                # self.slc_data = self.slc_data
+                pass
+
+        if transpose:
+            print(self.slc_data.T)
+        else:
+            print(self.slc_data)
+        return
+
+    def save(self, save_path: str, index: bool, float_format: str):
+        if save_path:
+            if save_path.endswith(".csv"):
+                self.slc_data.to_csv(save_path, index=index, float_format=float_format)
+            elif save_path.endswith(".xls") or save_path.endswith(".xlsx"):
+                self.slc_data.to_excel(save_path, index=index, float_format=float_format)
+        return
+
+
+class CDataViewerCSV(__CDataViewer):
+    def __init__(self, src_path: str, header: int):
+        super().__init__()
+        self.src_path = src_path
+        self.header = header
+
+    def fetch(self, cols: list[str], where: str):
+        if self.src_path.endswith(".xls") or self.src_path.endswith(".xlsx"):
+            self.raw_data = pd.read_excel(self.src_path, header=self.header if self.header >= 0 else None)
+        else:
+            self.raw_data = pd.read_csv(self.src_path, header=self.header if self.header >= 0 else None)
+        if where:
+            self.slc_data = self.raw_data.query(where)
+        else:
+            self.slc_data = self.raw_data
+        if cols:
+            self.slc_data = self.slc_data[cols]
+        return
+
+
+class CDataViewerSql(__CDataViewer):
+    def __init__(self, lib: str, table: str):
+        super().__init__()
+        self.lib = lib
+        self.table = table
+
+    def get_table_names(self) -> list[str]:
+        with sql3.connect(self.lib) as connection:
+            cursor = connection.cursor()
+            sql = f"select * from {self.table} where 1=0;"
+            cursor.execute(sql)
+            _names = [d[0] for d in cursor.description]
+        return _names
+
+    def fetch(self, cols: list[str], where: str):
+        var_str = ",".join(col_names := (cols or self.get_table_names()))
+        with sql3.connect(self.lib) as connection:
+            cursor = connection.cursor()
+            cmd_sql = f"SELECT {var_str} from {self.table} {f'WHERE {where}' if where else ''}"
+            data = cursor.execute(cmd_sql).fetchall()
+            self.slc_data = pd.DataFrame(data, columns=col_names)
+        return
+
+
+class CArgsParserViewer:
+    def __init__(self, desc: str):
+        self.args_parser = argparse.ArgumentParser(description=desc)
+
+    def add_arguments(self):
+        self.args_parser.add_argument(
+            "--vars",
+            type=str,
+            default=None,
+            help="variables to fetch, separated by ',' like \"open,high,low,close\", "
+                 "if not provided then fetch all.",
+        )
+        self.args_parser.add_argument(
+            "--where",
+            type=str,
+            default=None,
+            help="conditions to filter, sql expression "
+                 "like \"(instrument = 'a' OR instrument = 'd') AND (trade_date <= '20120131')\" ",
+        )
+
+        self.args_parser.add_argument(
+            "--head", type=int, default=0, help="integer, head lines to print"
+        )
+        self.args_parser.add_argument(
+            "--tail", type=int, default=0, help="integer, tail lines to print"
+        )
+        self.args_parser.add_argument(
+            "--maxrows",
+            type=int,
+            default=0,
+            help="integer, provide larger value to see more rows when print outcomes",
+        )
+        self.args_parser.add_argument(
+            "--maxcols",
+            type=int,
+            default=0,
+            help="integer, provide larger value to see more columns when print outcomes",
+        )
+        self.args_parser.add_argument(
+            "--transpose",
+            default=False,
+            action="store_true",
+            help="boolean, transpose the outcomes when show if activated",
+        )
+        self.args_parser.add_argument(
+            "--save",
+            type=str,
+            default=None,
+            help="a path to save the resulting data if provided",
+        )
+        self.args_parser.add_argument(
+            "--index",
+            default=False,
+            action="store_true",
+            help="boolean, save index when saving if activated",
+        )
+        self.args_parser.add_argument(
+            "--floatfmt",
+            default="%.6f",
+            help="float format when saving, default is '%%.6f'",
+        )
+
+    def get_args(self):
+        return self.args_parser.parse_args()
+
+
+class CArgsParserViewerSql(CArgsParserViewer):
+    def __init__(self):
+        super().__init__(desc="A program to view data in sqlite.db")
+
+    def add_arguments(self):
+        super().add_arguments()
+        self.args_parser.add_argument(
+            "--lib",
+            type=str,
+            required=True,
+            help="path for sql file, like 'E:\\tmp\\alternative.db'",
+        )
+        self.args_parser.add_argument(
+            "--table",
+            type=str,
+            required=True,
+            help="table name in the sql file, like 'macro' or 'forex' in alternative.db",
+        )

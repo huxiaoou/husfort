@@ -32,7 +32,7 @@ function Copy-To-Dir {
     Write-Host "copy $Src to $Dst ..."
 }
 
-$custom_py_dir = Read-Host -Prompt "Please input the full path for the directory, like E:\TMP."
+$custom_py_dir = Read-Host -Prompt "Please input the full path for the directory, like 'D:\PyScripts'."
 Add-To-Env-Path $custom_py_dir
 Find-And-New-Dir $custom_py_dir
 
