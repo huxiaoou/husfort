@@ -25,8 +25,8 @@ class __CDataViewer:
         if head > 0:
             if tail > 0:
                 print(
-                    f"[INF] both argument head and tail are given, (head, tail)=({head}, {tail}) "
-                    f"A concat data will be generated. If total length of data < ({head + tail}), "
+                    f"[INF] both argument head and tail are given, (head, tail)=({head}, {tail}). "
+                    f"A concat data will be generated. If total length of data {len(self.slc_data)} < {head + tail}, "
                     f"the result may be overlapped."
                 )
                 self.slc_data = pd.concat(
@@ -59,16 +59,24 @@ class __CDataViewer:
 
 
 class CDataViewerCSV(__CDataViewer):
-    def __init__(self, src_path: str, header: int):
+    def __init__(self, src_path: str, sheet_name: int | str, header: int):
         super().__init__()
         self.src_path = src_path
+        self.sheet_name = sheet_name
         self.header = header
 
     def fetch(self, cols: list[str], where: str):
         if self.src_path.endswith(".xls") or self.src_path.endswith(".xlsx"):
-            self.raw_data = pd.read_excel(self.src_path, header=self.header if self.header >= 0 else None)
+            self.raw_data = pd.read_excel(
+                self.src_path,
+                sheet_name=self.sheet_name,
+                header=self.header if self.header >= 0 else None,
+            )
         else:
-            self.raw_data = pd.read_csv(self.src_path, header=self.header if self.header >= 0 else None)
+            self.raw_data = pd.read_csv(
+                self.src_path,
+                header=self.header if self.header >= 0 else None,
+            )
         if where:
             self.slc_data = self.raw_data.query(where)
         else:
@@ -166,6 +174,39 @@ class CArgsParserViewer:
 
     def get_args(self):
         return self.args_parser.parse_args()
+
+
+def int_or_str(arg):
+    try:
+        return int(arg)
+    except ValueError:
+        return arg
+
+
+class CArgsParserViewerCsv(CArgsParserViewer):
+    def __init__(self):
+        super().__init__(desc="A program to view data in csv/xls/xlsx files")
+
+    def add_arguments(self):
+        super().add_arguments()
+        self.args_parser.add_argument(
+            "--path",
+            type=str,
+            required=True,
+            help="path for csv file, like 'E:\\tmp\\test.csv.gz' or 'test.csv'",
+        )
+        self.args_parser.add_argument(
+            "--sheet",
+            type=int_or_str,
+            default=0,
+            help="string for name of sheet, or integers are used in zero-indexed sheet positions. Only required for reading xls/xlsx files",
+        )
+        self.args_parser.add_argument(
+            "--header",
+            type=int,
+            default=0,
+            help="row number of headers, use -1 if there is no header in the source file"
+        )
 
 
 class CArgsParserViewerSql(CArgsParserViewer):
