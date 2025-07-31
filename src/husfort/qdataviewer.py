@@ -110,6 +110,30 @@ class CDataViewerSql(__CDataViewer):
         return
 
 
+class CDataViewerH5(__CDataViewer):
+    def __init__(self, lib: str, table: str):
+        super().__init__()
+        self.lib = lib
+        self.table = table
+
+    def fetch(self, cols: list[str], where: str):
+        with pd.HDFStore(path=self.lib, mode="r") as store:
+            if where:
+                self.slc_data = store.select(key=self.table, where=where.split(";"))  # type:ignore
+            else:
+                self.slc_data = store.get(key=self.table)
+        if cols:
+            self.slc_data = self.slc_data[cols]
+        return
+
+
+"""
+------------------------------------
+------- class for ArgsParser -------
+------------------------------------
+"""
+
+
 class CArgsParserViewer:
     def __init__(self, desc: str):
         self.args_parser = argparse.ArgumentParser(description=desc)
@@ -127,7 +151,9 @@ class CArgsParserViewer:
             type=str,
             default=None,
             help="conditions to filter, sql expression "
-                 "like \"(instrument = 'a' OR instrument = 'd') AND (trade_date <= '20120131')\" ",
+                 "like \"(instrument = 'a' OR instrument = 'd') AND (trade_date <= '20120131')\". "
+                 "For h5 viewer,  multiple conditions are separated by ';'."
+                 "like \"instrument = 'a' | instrument = 'd';trade_date <= '20120131'\""
         )
 
         self.args_parser.add_argument(
@@ -226,4 +252,24 @@ class CArgsParserViewerSql(CArgsParserViewer):
             type=str,
             required=True,
             help="table name in the sql file, like 'macro' or 'forex' in alternative.db",
+        )
+
+
+class CArgsParserViewerH5(CArgsParserViewer):
+    def __init__(self):
+        super().__init__(desc="A program to view data in h5")
+
+    def add_arguments(self):
+        super().add_arguments()
+        self.args_parser.add_argument(
+            "--lib",
+            type=str,
+            required=True,
+            help="path for h5 file, like 'E:\\tmp\\test.h5'",
+        )
+        self.args_parser.add_argument(
+            "--table",
+            type=str,
+            required=True,
+            help="table name in the h5 file, like '/grp1/grp2/testTable'",
         )

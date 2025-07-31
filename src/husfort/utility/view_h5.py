@@ -1,76 +1,23 @@
 #!/usr/bin/env python
 
-import argparse
-
-
-def parse_args():
-    args_parser = argparse.ArgumentParser(description="A python script to view hdf5")
-    args_parser.add_argument(
-        "--lib",
-        type=str,
-        required=True,
-        help="path for h5 file, like 'E:\\tmp\\test.h5'",
-    )
-    args_parser.add_argument(
-        "--table",
-        type=str,
-        required=True,
-        help="table name in the h5 file, like '/grp1/grp2/testTable'",
-    )
-    args_parser.add_argument(
-        "--head", type=int, default=0, help="integer, head lines to print"
-    )
-    args_parser.add_argument(
-        "--tail", type=int, default=0, help="integer, tail lines to print"
-    )
-    args_parser.add_argument(
-        "--maxrows",
-        type=int,
-        default=0,
-        help="integer, provide larger value to see more rows when print outcomes",
-    )
-    args_parser.add_argument(
-        "--maxcols",
-        type=int,
-        default=0,
-        help="integer, provide larger value to see more columns when print outcomes",
-    )
-    args_parser.add_argument(
-        "--where",
-        type=str,
-        default=None,
-        help="conditions to filter, multiple conditions are separated by ';', "
-        "like \"instrument = 'a' | instrument = 'd';trade_date <= '20120131'\" ",
-    )
-    _args = args_parser.parse_args()
-    return _args
-
 
 if __name__ == "__main__":
-    import sys
-    import pandas as pd
+    from husfort.qdataviewer import CDataViewerH5, CArgsParserViewerH5
 
-    pd.set_option("display.unicode.east_asian_width", True)
+    args_parser = CArgsParserViewerH5()
+    args_parser.add_arguments()
+    args = args_parser.get_args()
 
-    args = parse_args()
-    if args.maxrows > 0:
-        pd.set_option("display.max_rows", args.maxrows)
-    if args.maxcols > 0:
-        pd.set_option("display.max_columns", args.maxcols)
-
-    with pd.HDFStore(path=args.lib, mode="r") as store:
-        if args.where:
-            df: pd.DataFrame = store.select(  # type:ignore
-                key=args.table, where=args.where.split(";")
-            )
-        else:
-            df: pd.DataFrame = store.get(key=args.table)  # type:ignore
-
-    if args.head > 0:
-        print(df.head(args.head))
-        sys.exit()
-    if args.tail > 0:
-        print(df.tail(args.tail))
-        sys.exit()
-
-    print(df)
+    data_viewer = CDataViewerH5(lib=args.lib, table=args.table)
+    cols = args.vars.split(",") if args.vars else []
+    data_viewer.fetch(cols=cols, where=args.where)
+    data_viewer.show(
+        head=args.head, tail=args.tail,
+        max_rows=args.maxrows, max_cols=args.maxcols,
+        transpose=args.transpose,
+    )
+    data_viewer.save(
+        save_path=args.save,
+        index=args.index,
+        float_format=args.floatfmt,
+    )
