@@ -1,8 +1,8 @@
 #!/usr/bin/env python
 
-from husfort.qdataviewer import CDataViewerCSV, CArgsParserViewerCsv
-
 if __name__ == "__main__":
+    from husfort.qdataviewer import CDataViewerCSV, CArgsParserViewerCsv
+
     args_parser = CArgsParserViewerCsv()
     args_parser.add_arguments()
     args = args_parser.get_args()
