@@ -14,6 +14,7 @@ class __CDataViewer:
     def show(
             self,
             head: int, tail: int,
+            chead: int, ctail: int,
             max_rows: int, max_cols: int,
             transpose: bool = False,
     ):
@@ -41,6 +42,26 @@ class __CDataViewer:
                 self.slc_data = self.slc_data.tail(tail)
             else:
                 # self.slc_data = self.slc_data
+                pass
+
+        if chead > 0:
+            if ctail > 0:
+                print(
+                    f"[INF] both argument chead and ctail are given, (chead, ctail)=({chead}, {ctail}). "
+                    f"A concat data will be generated. If total width of data {self.slc_data.shape[1]} < {chead + ctail}, "
+                    f"the result may be overlapped."
+                )
+                self.slc_data = pd.concat(
+                    objs=[self.slc_data.iloc[:, 0:chead], self.slc_data.iloc[:, -ctail:]],
+                    axis=1,
+                    ignore_index=False
+                )
+            else:
+                self.slc_data = self.slc_data.iloc[:, 0:chead]
+        else:
+            if ctail > 0:
+                self.slc_data = self.slc_data.iloc[:, -ctail:]
+            else:
                 pass
 
         if transpose:
@@ -165,10 +186,16 @@ class CArgsParserViewer:
         )
 
         self.args_parser.add_argument(
-            "--head", type=int, default=0, help="integer, head lines to print"
+            "--head", type=int, default=0, help="integer, head rows to print"
         )
         self.args_parser.add_argument(
-            "--tail", type=int, default=0, help="integer, tail lines to print"
+            "--tail", type=int, default=0, help="integer, tail rows to print"
+        )
+        self.args_parser.add_argument(
+            "--chead", type=int, default=0, help="integer, head columns to print"
+        )
+        self.args_parser.add_argument(
+            "--ctail", type=int, default=0, help="integer, tail columns to print"
         )
         self.args_parser.add_argument(
             "--maxrows",
