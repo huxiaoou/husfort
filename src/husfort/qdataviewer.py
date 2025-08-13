@@ -87,12 +87,20 @@ class CDataViewerCSV(__CDataViewer):
 
 
 class CDataViewerSql(__CDataViewer):
-    def __init__(self, lib: str, table: str):
+    def __init__(self, lib: str, table: str = None):
         super().__init__()
         self.lib = lib
-        self.table = table
+        self.table = table or self.get_tables()[0]
 
-    def get_table_names(self) -> list[str]:
+    def get_tables(self) -> list[str]:
+        with sql3.connect(self.lib) as connection:
+            cursor = connection.cursor()
+            sql = "SELECT name FROM sqlite_master WHERE type='table';"
+            cursor.execute(sql)
+            tables = cursor.fetchall()
+            return [z[0] for z in tables]
+
+    def get_var_names_from_table(self) -> list[str]:
         with sql3.connect(self.lib) as connection:
             cursor = connection.cursor()
             sql = f"select * from {self.table} where 1=0;"
@@ -101,7 +109,7 @@ class CDataViewerSql(__CDataViewer):
         return _names
 
     def fetch(self, cols: list[str], where: str):
-        var_str = ",".join(col_names := (cols or self.get_table_names()))
+        var_str = ",".join(col_names := (cols or self.get_var_names_from_table()))
         with sql3.connect(self.lib) as connection:
             cursor = connection.cursor()
             cmd_sql = f"SELECT {var_str} from {self.table} {f'WHERE {where}' if where else ''}"
@@ -250,8 +258,8 @@ class CArgsParserViewerSql(CArgsParserViewer):
         self.args_parser.add_argument(
             "--table",
             type=str,
-            required=True,
-            help="table name in the sql file, like 'macro' or 'forex' in alternative.db",
+            default=None,
+            help="table name in the sql file, like 'macro' or 'forex' in alternative.db. If not provided, the first table will be used.",
         )
 
 
