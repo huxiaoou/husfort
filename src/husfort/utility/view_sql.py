@@ -6,13 +6,15 @@ if __name__ == "__main__":
     args_parser = CArgsParserViewerSql()
     args_parser.add_arguments()
     args = args_parser.get_args()
+    cols = args_parser.parse_vars(variables=args.vars)
+    sort, ascending = args_parser.parse_sorts(sort=args.sort, ascending=args.ascending)
 
     data_viewer = CDataViewerSql(lib=args.lib, table=args.table)
-    cols = args.vars.split(",") if args.vars else []
     data_viewer.fetch(cols=cols, where=args.where)
     data_viewer.show(
         head=args.head, tail=args.tail,
         chead=args.chead, ctail=args.ctail,
+        sort=sort, ascending=ascending,
         max_rows=args.maxrows, max_cols=args.maxcols,
         transpose=args.transpose,
     )

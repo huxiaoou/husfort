@@ -11,18 +11,7 @@ class __CDataViewer:
     def fetch(self, cols: list[str], where: str):
         raise NotImplementedError
 
-    def show(
-            self,
-            head: int, tail: int,
-            chead: int, ctail: int,
-            max_rows: int, max_cols: int,
-            transpose: bool = False,
-    ):
-        pd.set_option("display.unicode.east_asian_width", True)
-        if max_rows > 0:
-            pd.set_option("display.max_rows", max_rows)
-        if max_cols > 0:
-            pd.set_option("display.max_columns", max_cols)
+    def pick_head_tail(self, head: int, tail: int):
         if head > 0:
             if tail > 0:
                 print(
@@ -43,7 +32,9 @@ class __CDataViewer:
             else:
                 # self.slc_data = self.slc_data
                 pass
+        return 0
 
+    def pick_chead_ctail(self, chead: int, ctail: int):
         if chead > 0:
             if ctail > 0:
                 print(
@@ -63,7 +54,29 @@ class __CDataViewer:
                 self.slc_data = self.slc_data.iloc[:, -ctail:]
             else:
                 pass
+        return 0
 
+    def sort(self, sort: list[str], ascending: list[bool]):
+        if sort:
+            self.slc_data = self.slc_data.sort_values(sort, ascending=ascending)
+        return 0
+
+    def show(
+            self,
+            head: int, tail: int,
+            chead: int, ctail: int,
+            sort: list[str], ascending: list[bool],
+            max_rows: int, max_cols: int,
+            transpose: bool = False,
+    ):
+        self.sort(sort=sort, ascending=ascending)
+        self.pick_head_tail(head=head, tail=tail)
+        self.pick_chead_ctail(chead=chead, ctail=ctail)
+        pd.set_option("display.unicode.east_asian_width", True)
+        if max_rows > 0:
+            pd.set_option("display.max_rows", max_rows)
+        if max_cols > 0:
+            pd.set_option("display.max_columns", max_cols)
         if transpose:
             print(self.slc_data.T)
         else:
@@ -184,6 +197,19 @@ class CArgsParserViewer:
                  "For h5 viewer,  multiple conditions are separated by ';'."
                  "like \"instrument = 'a' | instrument = 'd';trade_date <= '20120131'\""
         )
+        self.args_parser.add_argument(
+            "--sort",
+            type=str,
+            default=None,
+            help="columns to sort, separated by ',', like 'trade_date,instrument,close'"
+        )
+        self.args_parser.add_argument(
+            "--ascending",
+            type=str,
+            default=None,
+            help="works only --sort is provided, 'T' for ascending, 'F' for descending, like 'T,F,T'. "
+                 "All would be ='T' if not provided."
+        )
 
         self.args_parser.add_argument(
             "--head", type=int, default=0, help="integer, head rows to print"
@@ -235,6 +261,25 @@ class CArgsParserViewer:
 
     def get_args(self):
         return self.args_parser.parse_args()
+
+    @staticmethod
+    def parse_vars(variables: str):
+        return variables.split(",") if variables else []
+
+    @staticmethod
+    def parse_sorts(sort: str, ascending: str) -> tuple[list[str], list[bool]]:
+        sorts = sort.split(",") if sort else []
+        if ascending:
+            ascendings = [z.upper() in ["T", "TRUE"] for z in ascending.split(",")]
+        else:
+            ascendings = [True] * len(sorts)
+        if len(ascendings) >= len(sorts):
+            return sorts, ascendings[0:len(sorts)]
+        else:  # len(ascendings) < len(sorts)
+            if ascendings:
+                return sorts, ascendings + [ascendings[-1]] * (len(sorts) - len(ascendings))
+            else:
+                return sorts, [True] * len(sorts)
 
 
 def int_or_str(arg):
