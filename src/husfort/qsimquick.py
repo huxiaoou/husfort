@@ -215,4 +215,4 @@ class CSignalsLoader(CSignalsLoaderBase):
         return self._sid
 
     def load(self, bgn_date: str, stp_date: str) -> pd.DataFrame:
-        return self.data.query(f"trade_date >= '{bgn_date}' AND trade_date < '{stp_date}'")
+        return self.data.query(f"trade_date >= '{bgn_date}' and trade_date < '{stp_date}'")
