@@ -197,3 +197,22 @@ class CSimQuick:
         nav_data = self.load_nav_range(bgn_date=nav_plot_bgn_date, stp_date=stp_date)
         self.plot(nav_data=nav_data)
         return 0
+
+
+class CSignalsLoader(CSignalsLoaderBase):
+    def __init__(self, sid: str, signal_db_struct: CDbStruct):
+        self._sid = sid
+        sqldb = CMgrSqlDb(
+            db_save_dir=signal_db_struct.db_save_dir,
+            db_name=signal_db_struct.db_name,
+            table=signal_db_struct.table,
+            mode="r",
+        )
+        self.data = sqldb.read()
+
+    @property
+    def signal_id(self):
+        return self._sid
+
+    def load(self, bgn_date: str, stp_date: str) -> pd.DataFrame:
+        return self.data.query(f"trade_date >= '{bgn_date}' AND trade_date < '{stp_date}'")
