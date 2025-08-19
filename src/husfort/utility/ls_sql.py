@@ -6,7 +6,7 @@ if __name__ == "__main__":
     from husfort.qdataviewer import CDataViewerSql
 
     args_parser = argparse.ArgumentParser(description="A program to show tables in sqlite database")
-    args_parser.add_argument("--lib", required=True, type=str, help="lib path")
+    args_parser.add_argument("lib", type=str, help="lib path")
     args = args_parser.parse_args()
 
     data_viewer = CDataViewerSql(lib=args.lib)

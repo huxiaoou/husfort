@@ -296,9 +296,8 @@ class CArgsParserViewerCsv(CArgsParserViewer):
     def add_arguments(self):
         super().add_arguments()
         self.args_parser.add_argument(
-            "--path",
+            "path",
             type=str,
-            required=True,
             help="path for csv file, like 'E:\\tmp\\test.csv.gz' or 'test.csv'",
         )
         self.args_parser.add_argument(
@@ -322,9 +321,8 @@ class CArgsParserViewerSql(CArgsParserViewer):
     def add_arguments(self):
         super().add_arguments()
         self.args_parser.add_argument(
-            "--lib",
+            "lib",
             type=str,
-            required=True,
             help="path for sql file, like 'E:\\tmp\\alternative.db'",
         )
         self.args_parser.add_argument(
@@ -342,9 +340,8 @@ class CArgsParserViewerH5(CArgsParserViewer):
     def add_arguments(self):
         super().add_arguments()
         self.args_parser.add_argument(
-            "--lib",
+            "lib",
             type=str,
-            required=True,
             help="path for h5 file, like 'E:\\tmp\\test.h5'",
         )
         self.args_parser.add_argument(
