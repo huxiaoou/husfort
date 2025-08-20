@@ -1,6 +1,10 @@
 import pandas as pd
 import sqlite3 as sql3
 import argparse
+from husfort.qutility import SFG
+from husfort.qlog import logger, define_logger
+
+define_logger()
 
 
 class __CDataViewer:
@@ -146,9 +150,18 @@ class CDataViewerSql(__CDataViewer):
         var_str = ",".join(col_names := (cols or self.get_var_names_from_table()))
         with sql3.connect(self.lib) as connection:
             cursor = connection.cursor()
-            cmd_sql = f"SELECT {var_str} from {self.table} {f'WHERE {where}' if where else ''}"
-            data = cursor.execute(cmd_sql).fetchall()
-            self.slc_data = pd.DataFrame(data, columns=col_names)
+            try:
+                cmd_sql = f"SELECT {var_str} from {self.table} {f'WHERE {where}' if where else ''}"
+                data = cursor.execute(cmd_sql).fetchall()
+                self.slc_data = pd.DataFrame(data, columns=col_names)
+            except sql3.OperationalError:
+                logger.info(
+                    f"argument --where='{SFG(where)}' may not supported by sqlite3 directly, "
+                    f"program will try pd.DataFrame.query method"
+                )
+                cmd_sql = f"SELECT {var_str} from {self.table}"
+                data = cursor.execute(cmd_sql).fetchall()
+                self.slc_data = pd.DataFrame(data, columns=col_names).query(where)
         return
 
 
