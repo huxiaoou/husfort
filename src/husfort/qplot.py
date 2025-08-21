@@ -365,6 +365,76 @@ class CPlotLines(CPlotFromDataFrame):
         return 0
 
 
+class CPlotLinesWithBars(CPlotLines):
+    def __init__(
+            self,
+            plot_data: pd.DataFrame,
+            line_cols: list[str],
+            bar_cols: list[str],
+            fig_name: str,
+            fig_save_dir: str,
+            fig_save_type: str = "pdf",
+            fig_size: tuple[float, float] = (16, 9),
+            style: str = "seaborn-v0_8-poster",
+            colormap: str = None,
+            line_width: float = 2,
+            line_style: list = None,
+            line_color: list = None,
+            bar_color: list = None,
+            bar_width: float = 0.8,
+            bar_alpha: float = 1.0,
+            stacked: bool = False,
+            align: str = "edge",
+    ):
+        self.line_cols = line_cols
+        self.bar_cols = bar_cols
+        self.plot_data_bar = plot_data[bar_cols]
+        super().__init__(
+            plot_data=plot_data[self.line_cols],
+            fig_name=fig_name,
+            fig_save_dir=fig_save_dir,
+            fig_save_type=fig_save_type,
+            fig_size=fig_size,
+            style=style,
+            colormap=colormap,
+            line_width=line_width,
+            line_style=line_style,
+            line_color=line_color,
+        )
+        self.bar_color = bar_color
+        self.bar_width = bar_width
+        self.bar_alpha = bar_alpha
+        self.stacked = stacked
+        self.align = align
+        self.ax_bar = self.ax.twinx()
+
+    def plot(self):
+        super().plot()
+        if self.bar_color:
+            self.plot_data_bar.plot.bar(
+                ax=self.ax_bar,
+                color=self.bar_color,
+                width=self.bar_width,
+                alpha=self.bar_alpha,
+                stacked=self.stacked,
+                align=self.align,
+            )
+        else:
+            self.plot_data_bar.plot.bar(
+                ax=self.ax_bar,
+                colormap=self.colormap,
+                width=self.bar_width,
+                alpha=self.bar_alpha,
+                stacked=self.stacked,
+                align=self.align,
+            )
+        return 0
+
+    def set_secondary_y_axis(self, ylim: tuple[float, float] | tuple[None, None] = (None, None)):
+        self.ax_bar.set_ylim(ylim)
+        return 0
+
+
 class CPlotBars(CPlotFromDataFrame):
     def __init__(self,
                  bar_color: list = None,
