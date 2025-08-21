@@ -365,7 +365,57 @@ class CPlotLines(CPlotFromDataFrame):
         return 0
 
 
-class CPlotLinesWithBars(CPlotLines):
+class __CPlotLinesWithTwinX(CPlotLines):
+    def __init__(
+            self,
+            plot_data: pd.DataFrame,
+            fig_name: str,
+            fig_save_dir: str,
+            fig_save_type: str = "pdf",
+            fig_size: tuple[float, float] = (16, 9),
+            style: str = "seaborn-v0_8-poster",
+            colormap: str = None,
+            line_width: float = 2,
+            line_style: list = None,
+            line_color: list = None,
+    ):
+        super().__init__(
+            plot_data,
+            fig_name,
+            fig_save_dir,
+            fig_save_type,
+            fig_size,
+            style,
+            colormap,
+            line_width,
+            line_style,
+            line_color,
+        )
+        self.ax_twin = self.ax.twinx()
+
+    def set_secondary_y_axis(self, ylim: tuple[float, float] | tuple[None, None] = (None, None)):
+        self.ax_twin.set_ylim(ylim)
+        return 0
+
+    def set_legend(self, size: int = 12, loc: str | None = "upper left"):
+        """
+
+        :param loc: use 'loc = None' to remove legend
+        :param size:
+        :return:
+        """
+        if loc is None:
+            self.ax.get_legend().remove()
+            self.ax_twin.get_legend().remove()
+        else:
+            lines0, labels0 = self.ax.get_legend_handles_labels()
+            lines1, labels1 = self.ax_twin.get_legend_handles_labels()
+            self.ax.legend(lines0 + lines1, labels0 + labels1, loc=loc, fontsize=size)
+            self.ax_twin.get_legend().remove()
+        return 0
+
+
+class CPlotLinesWithBars(__CPlotLinesWithTwinX):
     def __init__(
             self,
             plot_data: pd.DataFrame,
@@ -388,7 +438,6 @@ class CPlotLinesWithBars(CPlotLines):
     ):
         self.line_cols = line_cols
         self.bar_cols = bar_cols
-        self.plot_data_bar = plot_data[bar_cols]
         super().__init__(
             plot_data=plot_data[self.line_cols],
             fig_name=fig_name,
@@ -401,18 +450,18 @@ class CPlotLinesWithBars(CPlotLines):
             line_style=line_style,
             line_color=line_color,
         )
+        self.plot_data_bar = plot_data[bar_cols]
         self.bar_color = bar_color
         self.bar_width = bar_width
         self.bar_alpha = bar_alpha
         self.stacked = stacked
         self.align = align
-        self.ax_bar = self.ax.twinx()
 
     def plot(self):
         super().plot()
         if self.bar_color:
             self.plot_data_bar.plot.bar(
-                ax=self.ax_bar,
+                ax=self.ax_twin,
                 color=self.bar_color,
                 width=self.bar_width,
                 alpha=self.bar_alpha,
@@ -421,7 +470,7 @@ class CPlotLinesWithBars(CPlotLines):
             )
         else:
             self.plot_data_bar.plot.bar(
-                ax=self.ax_bar,
+                ax=self.ax_twin,
                 colormap=self.colormap,
                 width=self.bar_width,
                 alpha=self.bar_alpha,
@@ -430,8 +479,67 @@ class CPlotLinesWithBars(CPlotLines):
             )
         return 0
 
-    def set_secondary_y_axis(self, ylim: tuple[float, float] | tuple[None, None] = (None, None)):
-        self.ax_bar.set_ylim(ylim)
+
+class CPlotLinesWithLines(__CPlotLinesWithTwinX):
+    def __init__(
+            self,
+            plot_data: pd.DataFrame,
+            line_cols: list[str],
+            line_cols2: list[str],
+            fig_name: str,
+            fig_save_dir: str,
+            fig_save_type: str = "pdf",
+            fig_size: tuple[float, float] = (16, 9),
+            style: str = "seaborn-v0_8-poster",
+            colormap: str = None,
+            line_width: float = 2,
+            line_style: list = None,
+            line_color: list = None,
+            line_width2: float = 2,
+            line_style2: list = None,
+            line_color2: list = None,
+    ):
+        self.line_cols = line_cols
+        self.line_cols2 = line_cols2
+        super().__init__(
+            plot_data=plot_data[self.line_cols],
+            fig_name=fig_name,
+            fig_save_dir=fig_save_dir,
+            fig_save_type=fig_save_type,
+            fig_size=fig_size,
+            style=style,
+            colormap=colormap,
+            line_width=line_width,
+            line_style=line_style,
+            line_color=line_color,
+        )
+        self.plot_data2 = plot_data[line_cols2]
+        self.line_width2 = line_width2
+        self.line_style2 = line_style2
+        self.line_color2 = line_color2
+
+    def plot(self):
+        super().plot()
+        if self.line_color2:
+            self.plot_data2.plot.line(
+                ax=self.ax_twin,
+                lw=self.line_width2,
+                style=self.line_style2 or "-",
+                color=self.line_color2,
+            )
+        elif self.colormap:
+            self.plot_data2.plot.line(
+                ax=self.ax_twin,
+                lw=self.line_width2,
+                style=self.line_style2 or "-",
+                colormap=self.colormap,
+            )
+        else:
+            self.plot_data2.plot.line(
+                ax=self.ax_twin,
+                lw=self.line_width2,
+                style=self.line_style2 or "-",
+            )
         return 0
 
 
