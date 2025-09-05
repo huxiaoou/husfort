@@ -125,6 +125,7 @@ class COptimizerPortfolioSharpe(_COptimizerScipyMinimize):
             self,
             m: np.ndarray, v: np.ndarray, x0: np.ndarray | str,
             bounds: list[tuple[float, float]],
+            tot_mkt_val_bds: tuple[float, float] = (0.0, 1.0),
             max_iter: int = 50000,
             tol: float = 1e-6,
     ):
@@ -132,9 +133,13 @@ class COptimizerPortfolioSharpe(_COptimizerScipyMinimize):
 
         :param bounds: bounds[0] <= w_i <= bounds[1], Sequence of (min, max) pairs for each
                        element in x. None is used to specify no bound.
+        :param tot_mkt_val_bds: theoretically, sharpe ratio is irrelevant to this bounds
+                                user may ignore it. However, this may affect the result in practise.
+        :param max_iter: maximum iteration
         """
         super().__init__(m=m, v=v, x0=x0, max_iter=max_iter, tol=tol)
         self.bounds = bounds
+        self.tot_mkt_val_bds = tot_mkt_val_bds
 
     def target(self, w: np.ndarray):
         return -self.sharpe(w)
@@ -143,7 +148,8 @@ class COptimizerPortfolioSharpe(_COptimizerScipyMinimize):
     def optimize(self) -> OptimizeResult:
         # sharpe ratio is irrelevant to ths scale of z, i.e. the total market value
         # as the result of this, we provide a FIX scope for it
-        cons = NonlinearConstraint(lambda z: np.sum(np.abs(z)), lb=0.0, ub=1.0)
+        lb, ub = self.tot_mkt_val_bds
+        cons = NonlinearConstraint(lambda z: np.sum(np.abs(z)), lb=lb, ub=ub)
 
         # noinspection PyTypeChecker
         res = minimize(
