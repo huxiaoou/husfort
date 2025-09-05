@@ -1,10 +1,11 @@
-from typing import Union
+import warnings
 import numpy as np
+from typing import Union
 from scipy.optimize import minimize, NonlinearConstraint, OptimizeResult
 
 
 class COptimizerPortfolio:
-    def __init__(self, m: np.ndarray, v: np.ndarray):
+    def __init__(self, m: np.ndarray, v: np.ndarray, verbose: bool = True, ignore_warnings: bool = False):
         """
 
         :param m: mean matrix with size = p x 1
@@ -12,6 +13,8 @@ class COptimizerPortfolio:
         """
         self.m = m
         self.v = v
+        self.verbose = verbose
+        self.ignore_warnings = ignore_warnings
         self.p, _ = self.v.shape
         if self.p != _:
             raise ValueError(f"Shape of covariance is = ({self.v.shape})")
@@ -44,16 +47,32 @@ class COptimizerPortfolio:
     def parse_res(func):
         def parse_res_for_fun(self, **kwargs):
             res = func(self, **kwargs)
-            if not res.success:
+            if not res.success and self.verbose:
                 print("ERROR! Optimizer exits with a failure")
                 print(f"Detailed Description: {res.message}")
             return res
 
         return parse_res_for_fun
 
+    def turn_off_warnings(self):
+        if self.ignore_warnings:
+            warnings.filterwarnings(
+                "ignore",
+                message="Values in x were outside bounds during a minimize step, clipping to bounds",
+            )
+
 
 class _COptimizerScipyMinimize(COptimizerPortfolio):
-    def __init__(self, m: np.ndarray, v: np.ndarray, x0: Union[np.ndarray, str], max_iter: int, tol: float):
+    def __init__(
+            self,
+            m: np.ndarray,
+            v: np.ndarray,
+            x0: Union[np.ndarray, str],
+            max_iter: int,
+            tol: float,
+            verbose: bool = True,
+            ignore_warnings: bool = False,
+    ):
         """
 
         :param x0: init guess, or a string to indicate the method to generate init guess, available
@@ -63,7 +82,7 @@ class _COptimizerScipyMinimize(COptimizerPortfolio):
                     results maybe overfitted. You may want to adjust it to adapt to your input
                     data scale.
         """
-        super().__init__(m, v)
+        super().__init__(m, v, verbose=verbose, ignore_warnings=ignore_warnings)
         if isinstance(x0, str):
             if x0 == "aver":
                 self.x0 = np.ones(self.p) / self.p
@@ -83,6 +102,8 @@ class COptimizerPortfolioUtility(_COptimizerScipyMinimize):
             bounds: list[tuple[float, float]] = None,
             max_iter: int = 50000,
             tol: float = 1e-6,
+            verbose: bool = True,
+            ignore_warnings: bool = False,
     ):
         """
 
@@ -94,7 +115,7 @@ class COptimizerPortfolioUtility(_COptimizerScipyMinimize):
         :return:
         """
 
-        super().__init__(m=m, v=v, x0=x0, max_iter=max_iter, tol=tol)
+        super().__init__(m, v, x0, max_iter, tol, verbose=verbose, ignore_warnings=ignore_warnings)
         self.lbd = lbd
         self.tot_mkt_val_bds = tot_mkt_val_bds
         self.bounds = bounds
@@ -107,6 +128,7 @@ class COptimizerPortfolioUtility(_COptimizerScipyMinimize):
 
     @COptimizerPortfolio.parse_res
     def optimize(self) -> OptimizeResult:
+        self.turn_off_warnings()
         lb, ub = self.tot_mkt_val_bds
         cons = NonlinearConstraint(lambda z: np.sum(np.abs(z)), lb=lb, ub=ub)  # control total market value
 
@@ -130,6 +152,8 @@ class COptimizerPortfolioSharpe(_COptimizerScipyMinimize):
             max_iter: int = 50000,
             tol: float = 1e-6,
             using_jac: bool = False,
+            verbose: bool = True,
+            ignore_warnings: bool = False,
     ):
         """
 
@@ -140,7 +164,7 @@ class COptimizerPortfolioSharpe(_COptimizerScipyMinimize):
         :param max_iter: maximum iteration
         :param using_jac: whether to use Jacobian matrix, this may accelerate the speed
         """
-        super().__init__(m=m, v=v, x0=x0, max_iter=max_iter, tol=tol)
+        super().__init__(m, v, x0, max_iter, tol, verbose=verbose, ignore_warnings=ignore_warnings)
         self.bounds = bounds
         self.tot_mkt_val_bds = tot_mkt_val_bds
         self.using_jac = using_jac
@@ -153,6 +177,7 @@ class COptimizerPortfolioSharpe(_COptimizerScipyMinimize):
 
     @COptimizerPortfolio.parse_res
     def optimize(self) -> OptimizeResult:
+        self.turn_off_warnings()
         # sharpe ratio is irrelevant to ths scale of z, i.e. the total market value
         # as the result of this, we provide a FIX scope for it
         lb, ub = self.tot_mkt_val_bds
