@@ -1,7 +1,39 @@
 import warnings
 import numpy as np
+import numpy.typing as npt
 from typing import Union
 from scipy.optimize import minimize, NonlinearConstraint, OptimizeResult
+from numba import njit
+
+
+@njit(cache=True)
+def returns(w: npt.NDArray, m: npt.NDArray) -> npt.NDArray:
+    return w @ m
+
+
+@njit(cache=True)
+def covariance(w: npt.NDArray, v: npt.NDArray) -> npt.NDArray:
+    return w @ v @ w
+
+
+@njit(cache=True)
+def volatility(w: npt.NDArray, v: npt.NDArray) -> npt.NDArray:
+    return np.power(w @ v @ w, 0.5)
+
+
+@njit(cache=True)
+def sharpe(w: npt.NDArray, m: npt.NDArray, v: npt.NDArray) -> npt.NDArray:
+    return returns(w, m) / volatility(w, v)
+
+
+@njit(cache=True)
+def utility(w: npt.NDArray, m: npt.NDArray, v: npt.NDArray, lbd: float) -> npt.NDArray:
+    return returns(w, m) - 0.5 * lbd * covariance(w, v)
+
+
+@njit(cache=True)
+def jac_sharpe(w: npt.NDArray, m: npt.NDArray, v: npt.NDArray) -> npt.NDArray:
+    return (m - sharpe(w, m, v) * (v @ w)) / covariance(w, v)
 
 
 class COptimizerPortfolio:
@@ -26,16 +58,16 @@ class COptimizerPortfolio:
         return self.p
 
     def returns(self, w: np.ndarray):
-        return w @ self.m
+        return returns(w=w, m=self.m)
 
     def covariance(self, w: np.ndarray):
-        return w @ self.v @ w
+        return covariance(w=w, v=self.v)
 
     def volatility(self, w: np.ndarray):
-        return self.covariance(w) ** 0.5
+        return volatility(w=w, v=self.v)
 
     def sharpe(self, w: np.ndarray):
-        return self.returns(w) / self.volatility(w)
+        return sharpe(w=w, m=self.m, v=self.v)
 
     def target(self, w: np.ndarray):
         raise NotImplementedError
@@ -121,7 +153,7 @@ class COptimizerPortfolioUtility(_COptimizerScipyMinimize):
         self.bounds = bounds
 
     def utility(self, w: np.ndarray):
-        return self.returns(w) - 0.5 * self.lbd * self.covariance(w)
+        return utility(w=w, m=self.m, v=self.v, lbd=self.lbd)
 
     def target(self, w: np.ndarray):
         return -self.utility(w)
@@ -173,7 +205,7 @@ class COptimizerPortfolioSharpe(_COptimizerScipyMinimize):
         return -self.sharpe(w)
 
     def jac(self, w: np.ndarray):
-        return -(self.m - self.sharpe(w) * (self.v @ w)) / self.covariance(w)
+        return -jac_sharpe(w=w, m=self.m, v=self.v)
 
     @COptimizerPortfolio.parse_res
     def optimize(self) -> OptimizeResult:

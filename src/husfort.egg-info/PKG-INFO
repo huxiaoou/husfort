@@ -19,6 +19,7 @@ Requires-Dist: loguru
 Requires-Dist: rich
 Requires-Dist: paramiko
 Requires-Dist: scp
+Requires-Dist: numba
 Dynamic: license-file
 
 # Description

@@ -15,7 +15,7 @@ classifiers = [
     "Programming Language :: Python :: 3",
     "Operating System :: OS Independent",
 ]
-dependencies = ["numpy", "pandas", "matplotlib", "scipy", "loguru", "rich", "paramiko", "scp"]
+dependencies = ["numpy", "pandas", "matplotlib", "scipy", "loguru", "rich", "paramiko", "scp", "numba"]
 license = "GPL-3.0"
 license-files = [ "LICENSE"]
 

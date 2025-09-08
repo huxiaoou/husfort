@@ -6,3 +6,4 @@ loguru
 rich
 paramiko
 scp
+numba
