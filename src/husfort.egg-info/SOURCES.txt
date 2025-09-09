@@ -35,6 +35,7 @@ src/husfort/tests/test_qremote.py
 src/husfort/tests/test_qsqlite.py
 src/husfort/tests/test_qviewer_pnl.py
 src/husfort/utility/__init__.py
+src/husfort/utility/create_sprites_sheet.py
 src/husfort/utility/get_datetime_fromtimestamp.py
 src/husfort/utility/ls_sql.py
 src/husfort/utility/view_colors.py
