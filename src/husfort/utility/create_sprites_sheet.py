@@ -10,8 +10,9 @@ define_logger()
 def parse_args():
     arg_parser = argparse.ArgumentParser("A program to generate sprite sheets")
     arg_parser.add_argument("src", type=str, help="src directory")
-    arg_parser.add_argument("--ncol", type=int, default=6, help="number of cols")
     arg_parser.add_argument("--save", type=str, required=True, help="save path of the sprite_sheet")
+    arg_parser.add_argument("--ncol", type=int, default=6, help="number of cols")
+    arg_parser.add_argument("--shrink", type=float, default=1.0, help="the ratio to shrink")
     _args = arg_parser.parse_args()
     return _args
 
@@ -41,7 +42,8 @@ if __name__ == "__main__":
         png_count = len(pngs)
         nrow = cal_nrow(tot_count=png_count, ncol_=ncol)
         png_w, png_h = get_png_size(os.path.join(args.src, pngs[0]))
-        merged_image = Image.new(mode="RGBA", size=(png_w * ncol, png_h * nrow))
+        img_w, img_h = png_w * ncol, png_h * nrow
+        merged_image = Image.new(mode="RGBA", size=(img_w, img_h))
         for sn, png in enumerate(pngs):
             loc_col, loc_row = sn % ncol, sn // ncol
             png_path = os.path.join(args.src, png)
@@ -49,6 +51,12 @@ if __name__ == "__main__":
                 w, h = png_w * loc_col, png_h * loc_row
                 merged_image.paste(img, box=(w, h))
                 logger.info(f"{SFG(png_path)} is added at location({SFY(f'width={w:>6d}, height={h:>6d}')})")
+        if args.shrink <= 1.0:
+            logger.info(f"Shrinking sprite sheet to ration {args.shrink}")
+            shrink_size = (int(img_w * args.shrink), int(img_h * args.shrink))
+            merged_image = merged_image.resize(size=shrink_size)
+        else:
+            logger.warning(f"shrink ratio = {args.shrink}, which is greater than 1. And no shrinking is done")
         merged_image.save(args.save)
         logger.info(f"The sprite is saved to {SFG(args.save)}")
     else:
