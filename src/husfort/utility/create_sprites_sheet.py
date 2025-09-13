@@ -13,6 +13,10 @@ def parse_args():
     arg_parser.add_argument("--save", type=str, required=True, help="save path of the sprite_sheet")
     arg_parser.add_argument("--ncol", type=int, default=6, help="number of cols")
     arg_parser.add_argument("--shrink", type=float, default=1.0, help="the ratio to shrink")
+    arg_parser.add_argument("--width", type=int, default=None,
+                            help="if provided, will be used to set unit cell width (in pixel) for png")
+    arg_parser.add_argument("--height", type=int, default=None,
+                            help="if provided, will be used to set unit cell height (in pixel) for png")
     _args = arg_parser.parse_args()
     return _args
 
@@ -41,7 +45,16 @@ if __name__ == "__main__":
     if pngs:
         png_count = len(pngs)
         nrow = cal_nrow(tot_count=png_count, ncol_=ncol)
-        png_w, png_h = get_png_size(os.path.join(args.src, pngs[0]))
+        if args.width:
+            if args.height:
+                png_w, png_h = args.width, args.height
+            else:
+                png_w = png_h = args.width
+        else:
+            if args.height:
+                png_w = png_h = args.height
+            else:
+                png_w, png_h = get_png_size(os.path.join(args.src, pngs[0]))
         img_w, img_h = png_w * ncol, png_h * nrow
         merged_image = Image.new(mode="RGBA", size=(img_w, img_h))
         for sn, png in enumerate(pngs):
