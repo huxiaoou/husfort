@@ -72,6 +72,7 @@ class __CDataViewer:
             sort: list[str], ascending: list[bool],
             max_rows: int, max_cols: int,
             transpose: bool = False,
+            precision: int = 6,
     ):
         self.sort(sort=sort, ascending=ascending)
         self.pick_head_tail(head=head, tail=tail)
@@ -81,18 +82,19 @@ class __CDataViewer:
             pd.set_option("display.max_rows", max_rows)
         if max_cols > 0:
             pd.set_option("display.max_columns", max_cols)
+        pd.set_option("display.float_format", lambda z: f"{z:.{precision}f}")
         if transpose:
             print(self.slc_data.T)
         else:
             print(self.slc_data)
         return
 
-    def save(self, save_path: str, index: bool, float_format: str):
+    def save(self, save_path: str, index: bool, precision: int):
         if save_path:
             if save_path.endswith(".csv"):
-                self.slc_data.to_csv(save_path, index=index, float_format=float_format)
+                self.slc_data.to_csv(save_path, index=index, float_format=lambda z: f"{z:.{precision}f}")
             elif save_path.endswith(".xls") or save_path.endswith(".xlsx"):
-                self.slc_data.to_excel(save_path, index=index, float_format=float_format)
+                self.slc_data.to_excel(save_path, index=index)
         return
 
 
@@ -267,9 +269,10 @@ class CArgsParserViewer:
             help="boolean, save index when saving if activated",
         )
         self.args_parser.add_argument(
-            "--floatfmt",
-            default="%.6f",
-            help="float format when saving, default is '%%.6f'",
+            "--precision",
+            type=int,
+            default=6,
+            help="float precision when saving or displaying, default is 6",
         )
 
     def get_args(self):

@@ -17,9 +17,10 @@ if __name__ == "__main__":
         sort=sort, ascending=ascending,
         max_rows=args.maxrows, max_cols=args.maxcols,
         transpose=args.transpose,
+        precision=args.precision,
     )
     data_viewer.save(
         save_path=args.save,
         index=args.index,
-        float_format=args.floatfmt,
+        precision=args.precision,
     )
