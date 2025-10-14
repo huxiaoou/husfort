@@ -7,6 +7,17 @@ from husfort.qlog import logger, define_logger
 define_logger()
 
 
+def str_list(s: str) -> list[str]:
+    return s.split(",") if s else []
+
+
+def int_or_str(arg):
+    try:
+        return int(arg)
+    except ValueError:
+        return arg
+
+
 class __CDataViewer:
     def __init__(self):
         self.raw_data: pd.DataFrame = pd.DataFrame()
@@ -96,6 +107,17 @@ class __CDataViewer:
             elif save_path.endswith(".xls") or save_path.endswith(".xlsx"):
                 self.slc_data.to_excel(save_path, index=index)
         return
+
+    def pivot_table(self, pivot: bool, values: list[str], columns: list[str], indexes: list[str], aggfunc: list[str]):
+        if pivot:
+            pivot_data = pd.pivot_table(  # type:ignore
+                data=self.slc_data,
+                values=values or None,
+                columns=columns or None,
+                index=indexes or None,
+                aggfunc=aggfunc or "mean",
+            )
+            print(pivot_data)
 
 
 class CDataViewerCSV(__CDataViewer):
@@ -198,8 +220,8 @@ class CArgsParserViewer:
     def add_arguments(self):
         self.args_parser.add_argument(
             "--vars",
-            type=str,
-            default=None,
+            type=str_list,
+            default=[],
             help="variables to fetch, separated by ',' like \"open,high,low,close\", "
                  "if not provided then fetch all.",
         )
@@ -274,13 +296,39 @@ class CArgsParserViewer:
             default=6,
             help="float precision when saving or displaying, default is 6",
         )
+        self.args_parser.add_argument(
+            "--pivot",
+            default=False,
+            action="store_true",
+            help="pivot table for data",
+        )
+        self.args_parser.add_argument(
+            "--values",
+            type=str_list,
+            default=[],
+            help="values to pivot, separated by ',' like \"a,b,c\", works only if --pivot is True",
+        )
+        self.args_parser.add_argument(
+            "--indexes",
+            type=str_list,
+            default=[],
+            help="indexes to pivot, separated by ',' like \"i0,i1,i2\", works only if --pivot is True "
+        )
+        self.args_parser.add_argument(
+            "--columns",
+            type=str_list,
+            default=[],
+            help="columns to pivot, separated by ',' like \"c0,c1,c2\", works only if --pivot is True "
+        )
+        self.args_parser.add_argument(
+            "--aggfunc",
+            type=str_list,
+            default=["mean"],
+            help="functions to pivot, separated by ',' like \"mean,median,max,min\", works only if --pivot is True "
+        )
 
     def get_args(self):
         return self.args_parser.parse_args()
-
-    @staticmethod
-    def parse_vars(variables: str):
-        return variables.split(",") if variables else []
 
     @staticmethod
     def parse_sorts(sort: str, ascending: str) -> tuple[list[str], list[bool]]:
@@ -296,13 +344,6 @@ class CArgsParserViewer:
                 return sorts, ascendings + [ascendings[-1]] * (len(sorts) - len(ascendings))
             else:
                 return sorts, [True] * len(sorts)
-
-
-def int_or_str(arg):
-    try:
-        return int(arg)
-    except ValueError:
-        return arg
 
 
 class CArgsParserViewerCsv(CArgsParserViewer):
