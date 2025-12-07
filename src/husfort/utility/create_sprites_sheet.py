@@ -19,6 +19,8 @@ def parse_args():
                             help="if provided, will be used to set unit cell width (in pixel) for png")
     arg_parser.add_argument("--height", type=int, default=None,
                             help="if provided, will be used to set unit cell height (in pixel) for png")
+    arg_parser.add_argument("--wsep", type=int, default=0, help="width separation between columns")
+    arg_parser.add_argument("--hsep", type=int, default=0, help="height separation between rows")
     _args = arg_parser.parse_args()
     return _args
 
@@ -57,13 +59,13 @@ if __name__ == "__main__":
                 png_w = png_h = args.height
             else:
                 png_w, png_h = get_png_size(os.path.join(args.src, pngs[0]))
-        img_w, img_h = png_w * ncol, png_h * nrow
+        img_w, img_h = (png_w + args.wsep) * ncol, (png_h + args.hsep) * nrow
         merged_image = Image.new(mode="RGBA", size=(img_w, img_h))
         for sn, png in enumerate(pngs):
             loc_col, loc_row = sn % ncol, sn // ncol
             png_path = os.path.join(args.src, png)
             with Image.open(png_path) as img:
-                w, h = png_w * loc_col, png_h * loc_row
+                w, h = (png_w + args.wsep) * loc_col, (png_h + args.hsep) * loc_row
                 merged_image.paste(img, box=(w, h))
                 logger.info(f"{SFG(png_path)} is added at location({SFY(f'width={w:>6d}, height={h:>6d}')})")
         if args.shrink <= 1.0:
