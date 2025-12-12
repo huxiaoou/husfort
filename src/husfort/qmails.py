@@ -25,12 +25,13 @@ class CAttachmentText(object):
 
 
 class CAgentEmail(object):
-    def __init__(self, mail_host: str, mail_port: int, mail_sender: str, mail_sender_pwd: str):
+    def __init__(self, mail_host: str, mail_port: int, mail_sender: str, mail_sender_pwd: str, ssl_mode: bool = False):
         self.mail_host = mail_host
         self.mail_port = mail_port
         self.mail_sender = mail_sender
         self.mail_sender_pwd = mail_sender_pwd
         self.message = MIMEMultipart()
+        self.ssl_mode = ssl_mode
 
     def reinit(self):
         self.message = MIMEMultipart()
@@ -55,8 +56,10 @@ class CAgentEmail(object):
 
     def send(self):
         try:
-            # smtp_app = smtplib.SMTP_SSL(self.mail_host, self.mail_port)
-            smtp_app = smtplib.SMTP(self.mail_host, self.mail_port)
+            if self.ssl_mode:
+                smtp_app = smtplib.SMTP_SSL(self.mail_host, self.mail_port)
+            else:
+                smtp_app = smtplib.SMTP(self.mail_host, self.mail_port)
             logger.info(f"{SFG('connected')}")
 
             smtp_app.login(self.mail_sender, self.mail_sender_pwd)
