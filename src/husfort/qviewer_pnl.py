@@ -215,7 +215,7 @@ class CManagerViewer:
             last=f"{sty_footer}{'-'.rjust(10)}",
             base_val=f"{sty_footer}{base_val:12.2f}",
             last_val=f"{sty_footer}{last_val:12.2f}",
-            float_pnl=f"{sty_footer}{float_pnl:10.2f}",
+            float_pnl=f"{sty_footer}{float_pnl:12.2f}",
         )
         return rows, footer
 
