@@ -1,9 +1,12 @@
 import numpy as np
 import pandas as pd
 import datetime as dt
+import msvcrt
+import threading
 from rich.live import Live
 from rich.table import Table
 from rich.box import HORIZONTALS
+from typing import ClassVar
 from tqsdk import TqApi, TqAuth
 from dataclasses import dataclass, astuple
 from husfort.qinstruments import CInstruMgr, parse_instrument_from_contract
@@ -94,6 +97,7 @@ class CContract:
 
 @dataclass
 class CPosition:
+    criteria: ClassVar[str] = "pnl"
     contract: CContract
     direction: int
     qty: int
@@ -116,9 +120,14 @@ class CPosition:
             return p
 
     def __eq__(self, other: "CPosition"):
+        if self.criteria != "pnl":
+            return self.contract == other.contract
         return self.float_pnl == other.float_pnl
 
     def __gt__(self, other: "CPosition"):
+        if self.criteria != "pnl":
+            return self.contract < other.contract
+
         if self.float_pnl > other.float_pnl:
             return True
         elif self.float_pnl < other.float_pnl:
@@ -155,6 +164,7 @@ class CManagerViewer:
         self.user_choice: str = ""
         self.pos_and_quotes_df = pd.DataFrame()
         self.config = config
+        self.main_loop_tag: bool = True
 
     @property
     def positions_size(self) -> int:
@@ -223,7 +233,9 @@ class CManagerViewer:
         rows, footer = self.__update_rows_and_footer()
         table = Table(
             title=f"\n{self.desc} - {dt.datetime.now().strftime('%Y-%m-%d %H:%M:%S.%f')[:-3]}",
-            caption="Press Ctrl + C to quit ...",
+            caption="  c: sort by contract\n"
+                    "  p: sort by float pnl\n"
+                    "  q: quit",
             box=HORIZONTALS,
             title_style=f"bold {self.config.color.TitleFont}",
             caption_style=f"bold italic {self.config.color.CaptionFont}",
@@ -231,6 +243,7 @@ class CManagerViewer:
             footer_style=f"{self.config.color.FooterFont}",
             show_footer=True,
             padding=0,
+            caption_justify="left",
         )
         table.add_column(header="CONTRACT", justify="right", footer=footer.contractId)
         table.add_column(header="DIR", justify="right", footer=footer.dir)
@@ -258,14 +271,30 @@ class CManagerViewer:
         self.pos_and_quotes_df.sort_values(by="pos", ascending=False, inplace=True)
         return 0
 
+    def kb_controller(self):
+        while True:
+            # Check if a key has been pressed
+            if msvcrt.kbhit():
+                # Get the character. getch() returns bytes, so decode to utf-8.
+                char_bytes = msvcrt.getch()
+                key = char_bytes.decode("utf-8").lower()
+                if key == "c":
+                    CPosition.criteria = "contract"
+                elif key == "p":
+                    CPosition.criteria = "pnl"
+                elif key == "q":
+                    self.main_loop_tag = False
+                    break
+        return
+
     def main(self):
+        kb_thread = threading.Thread(target=self.kb_controller)
+        kb_thread.start()
         api = self.create_quotes_df(self.config.account.userId, self.config.account.password)
-        try:
-            with Live(self.__generate_table(), auto_refresh=False, screen=self.new_screen) as live:
-                while True:
-                    api.wait_update()
-                    self.update_from_quotes()
-                    live.update(self.__generate_table(), refresh=True)
-        except KeyboardInterrupt:
-            print("\n", end="")
+        with Live(self.__generate_table(), auto_refresh=False, screen=self.new_screen) as live:
+            while self.main_loop_tag:
+                api.wait_update()
+                self.update_from_quotes()
+                live.update(self.__generate_table(), refresh=True)
             api.close()
+        kb_thread.join()
