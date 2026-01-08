@@ -201,7 +201,7 @@ class CManagerViewer:
                 last=f"{sty_other}{pos.last_price:10.2f}",
                 base_val=f"{sty_other}{pos.base_val:12.2f}",
                 last_val=f"{sty_other}{pos.last_val:12.2f}",
-                float_pnl=f"{sty_pnl}{pos.float_pnl:10.2f}",
+                float_pnl=f"{sty_pnl}{pos.float_pnl:12.2f}",
             ))
 
         # set footer
