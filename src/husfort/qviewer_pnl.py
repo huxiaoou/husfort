@@ -271,13 +271,34 @@ class CManagerViewer:
         self.pos_and_quotes_df.sort_values(by="pos", ascending=False, inplace=True)
         return 0
 
+    @staticmethod
+    def parse_key() -> tuple[bool, str | None]:
+        # Get the character. getch() returns bytes, so decode to utf-8.
+        char_bytes = msvcrt.getch()
+        if char_bytes in (b'\x00', b'\xe0'):
+            char_bytes = msvcrt.getch()
+            # if char_bytes == b'H':
+            #     print("Up")
+            # elif char_bytes == b'P':
+            #     print("Down")
+            # elif char_bytes == b'K':
+            #     print("Left")
+            # elif char_bytes == b'M':
+            #     print("Right")
+            if char_bytes in (b'H', b'P', b'K', b'M'):
+                return False, None
+            else:
+                raise ValueError(f"Unsupported character {char_bytes}")
+        key = char_bytes.decode("utf-8").lower()
+        return True, key
+
     def kb_controller(self):
         while True:
             # Check if a key has been pressed
             if msvcrt.kbhit():
-                # Get the character. getch() returns bytes, so decode to utf-8.
-                char_bytes = msvcrt.getch()
-                key = char_bytes.decode("utf-8").lower()
+                success, key = self.parse_key()
+                if not success:
+                    continue
                 if key == "c":
                     CPosition.criteria = "contract"
                 elif key == "p":
