@@ -6,7 +6,7 @@ import threading
 from rich.live import Live
 from rich.table import Table
 from rich.box import HORIZONTALS
-from typing import ClassVar
+from typing import ClassVar, Literal
 from tqsdk import TqApi, TqAuth
 from dataclasses import dataclass, astuple
 from husfort.qinstruments import CInstruMgr, parse_instrument_from_contract
@@ -97,7 +97,7 @@ class CContract:
 
 @dataclass
 class CPosition:
-    criteria: ClassVar[str] = "pnl"
+    criteria: ClassVar[Literal["pnl", "contract", "direction", "qty", "base", "last"]] = "pnl"
     contract: CContract
     direction: int
     qty: int
@@ -119,26 +119,32 @@ class CPosition:
         else:
             return p
 
-    def __eq__(self, other: "CPosition"):
-        if self.criteria != "pnl":
-            return self.contract == other.contract
-        return self.float_pnl == other.float_pnl
-
     def __gt__(self, other: "CPosition"):
-        if self.criteria != "pnl":
+        if self.criteria == "contract":
             return self.contract < other.contract
-
-        if self.float_pnl > other.float_pnl:
-            return True
-        elif self.float_pnl < other.float_pnl:
-            return False
-        else:
-            if self.contract > other.contract:
-                return True
-            elif self.contract < other.contract:
-                return False
-            else:
+        elif self.criteria == "direction":
+            if self.direction == other.direction:
+                if self.qty == other.qty:
+                    return self.base_val > other.base_val
+                return self.qty * self.direction > other.qty * other.direction
+            return self.direction > other.direction
+        elif self.criteria == "qty":
+            if self.qty == other.qty:
+                if self.direction == other.direction:
+                    return self.float_pnl > other.float_pnl
                 return self.direction > other.direction
+            return self.qty > other.qty
+        elif self.criteria == "base":
+            return self.base_val > other.base_val
+        elif self.criteria == "last":
+            return self.last_val > other.last_val
+
+        # self.criteria = "pnl"
+        if self.float_pnl == other.float_pnl:
+            if self.contract == other.contract:
+                return self.direction > other.direction
+            return self.contract > other.contract
+        return self.float_pnl > other.float_pnl
 
     def set_last_price(self, price: float):
         if not np.isnan(price):
@@ -235,6 +241,10 @@ class CManagerViewer:
             title=f"\n{self.desc} - {dt.datetime.now().strftime('%Y-%m-%d %H:%M:%S.%f')[:-3]}",
             caption="  c: sort by contract\n"
                     "  p: sort by float pnl\n"
+                    "  d: sort by direction\n"
+                    "  t: sort by qty\n"
+                    "  b: sort by base value\n"
+                    "  l: sort by last value\n"
                     "  q: quit",
             box=HORIZONTALS,
             title_style=f"bold {self.config.color.TitleFont}",
@@ -301,6 +311,14 @@ class CManagerViewer:
                     continue
                 if key == "c":
                     CPosition.criteria = "contract"
+                elif key == "d":
+                    CPosition.criteria = "direction"
+                elif key == "t":
+                    CPosition.criteria = "qty"
+                elif key == "b":
+                    CPosition.criteria = "base"
+                elif key == "l":
+                    CPosition.criteria = "last"
                 elif key == "p":
                     CPosition.criteria = "pnl"
                 elif key == "q":
