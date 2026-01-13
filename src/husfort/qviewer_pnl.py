@@ -332,8 +332,8 @@ class CManagerViewer:
         api = self.create_quotes_df(self.config.account.userId, self.config.account.password)
         with Live(self.__generate_table(), auto_refresh=False, screen=self.new_screen) as live:
             while self.main_loop_tag:
-                api.wait_update()
-                self.update_from_quotes()
-                live.update(self.__generate_table(), refresh=True)
+                if api.wait_update(deadline=(dt.datetime.now() + dt.timedelta(seconds=3)).timestamp()):
+                    self.update_from_quotes()
+                    live.update(self.__generate_table(), refresh=True)
             api.close()
         kb_thread.join()
