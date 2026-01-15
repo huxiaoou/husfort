@@ -7,7 +7,6 @@ from rich.live import Live
 from rich.table import Table
 from rich.box import HORIZONTALS
 from typing import ClassVar, Literal
-from tqsdk import TqApi, TqAuth
 from dataclasses import dataclass, astuple
 from husfort.qinstruments import CInstruMgr, parse_instrument_from_contract
 
@@ -267,7 +266,15 @@ class CManagerViewer:
             table.add_row(*astuple(row))
         return table
 
-    def create_quotes_df(self, tq_account: str, tq_password: str) -> TqApi:
+    def create_quotes_df(self, tq_account: str, tq_password: str):
+        """
+
+        :param tq_account:
+        :param tq_password:
+        :return: an instance of TqApi
+        """
+        from tqsdk import TqApi, TqAuth
+
         contracts = [pos.contract.tianqin_id for pos in self.positions]
         api = TqApi(auth=TqAuth(user_name=tq_account, password=tq_password))
         quotes = [api.get_quote(contract) for contract in contracts]
