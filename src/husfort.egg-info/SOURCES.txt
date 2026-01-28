@@ -41,4 +41,5 @@ src/husfort/utility/ls_sql.py
 src/husfort/utility/view_colors.py
 src/husfort/utility/view_csv.py
 src/husfort/utility/view_h5.py
+src/husfort/utility/view_palette.py
 src/husfort/utility/view_sql.py

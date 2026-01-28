@@ -38,6 +38,7 @@ Find-And-New-Dir $custom_py_dir
 
 Copy-To-Dir -Src src/husfort/utility/get_datetime_fromtimestamp.py -Dst $custom_py_dir
 Copy-To-Dir -Src src/husfort/utility/view_colors.py -Dst $custom_py_dir
+Copy-To-Dir -Src src/husfort/utility/view_palette.py -Dst $custom_py_dir
 Copy-To-Dir -Src src/husfort/utility/view_csv.py -Dst $custom_py_dir
 Copy-To-Dir -Src src/husfort/utility/view_h5.py -Dst $custom_py_dir
 Copy-To-Dir -Src src/husfort/utility/view_sql.py -Dst $custom_py_dir
