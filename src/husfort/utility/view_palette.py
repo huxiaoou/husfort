@@ -44,7 +44,7 @@ def plot_palette(palette: Palette) -> None:
         header_style=f"bold {theme_color}",
     )
     table.add_column(header="HEX", justify="right", style="#FFFAFA")
-    table.add_column(header="RGB", justify="right", style="#4169E1")
+    table.add_column(header="RGB", justify="right", style="#4169E1", width=15)
     table.add_column(header="EXAMPLE", justify="right", style=theme_color)
     for block in palette.blocks:
         hex_color, rgb_color = block.hex_color, block.color_rgb_as_string()
@@ -87,17 +87,17 @@ def parse_arguments() -> argparse.Namespace:
         "--src",
         type=str,
         default=None,
-        help="A yaml file to privde color palettes (default: None), an example is like this\n"
-        "palettes:\n"
-        "  Classic Tavern:\n"
-        "    - '#5d432c'\n"
-        "    - '#c8782e'\n"
-        "  Enchanted Forest:\n"
-        "    - '#1a3b2d'\n"
-        "    - '#6a994e'\n"
-        "  Gothic Fortress:\n"
-        "    - '#2d2d2d'\n"
-        "    - '#8a9597'\n",
+        help="A yaml file to provide color palettes (default: None), an example is like this\n"
+             "palettes:\n"
+             "  Classic Tavern:\n"
+             "    - '#5d432c'\n"
+             "    - '#c8782e'\n"
+             "  Enchanted Forest:\n"
+             "    - '#1a3b2d'\n"
+             "    - '#6a994e'\n"
+             "  Gothic Fortress:\n"
+             "    - '#2d2d2d'\n"
+             "    - '#8a9597'\n",
     )
     parser.add_argument(
         "--width",
@@ -122,13 +122,12 @@ if __name__ == "__main__":
 
         with open(args.src, "r") as f:
             _config = yaml.safe_load(f)
-        data = _config.get("palettes", {})
+        p_data = _config.get("palettes", {})
     else:
-        data = {
+        p_data = {
             "Classic Tavern": ["#5d432c", "#c8782e", "#e8d8c9", "#2a4c3f", "#8a1b1b"],
             "Enchanted Forest": ["#1a3b2d", "#6a994e", "#4a3728", "#a2c5cc", "#9d4edd"],
             "Gothic Fortress": ["#2d2d2d", "#8a9597", "#4a6479", "#6d597a", "#b7410e"],
         }
 
-    palettes = get_palettes(data=data, width=args.width, height=args.height)
-    main(palettes=palettes)
+    main(palettes=get_palettes(data=p_data, width=args.width, height=args.height))
