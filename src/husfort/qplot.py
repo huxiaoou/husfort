@@ -80,9 +80,9 @@ class CPlot(object):
         if xlim != (None, None):
             x_range = xlim[1] - xlim[0]
             if xtick_spread:
-                xticks = np.arange(xlim[0], xlim[1], xtick_spread)
+                xticks = np.arange(xlim[0], xlim[1], int(xtick_spread))
             elif xtick_count:
-                xticks = np.arange(xlim[0], xlim[1], x_range / xtick_count)
+                xticks = np.arange(xlim[0], xlim[1], int(x_range / xtick_count))
             else:
                 xticks = None
             if xticks is not None:
