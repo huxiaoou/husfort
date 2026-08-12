@@ -25,146 +25,135 @@ chmod u+x ./install.sh
 ./install.sh
 ```
 
+After installation, a set of command-line utility scripts are also copied to `/usr/local/bin` (Linux) or a scripts directory (Windows). See the [Utility Scripts](#utility-scripts) section for details.
+
 ---
 
 ## Module Description
 
 ### qutility
 
-#### SFG等函数终端输出渲染
+通用工具函数.
 
-使用SFG/SFR等函数使在终端中输出颜色字体
+#### 终端彩色输出 (SFR / SFG / SFY / SFB / SFM / SFC / SFW)
 
-#### qtimer装饰器
+使用 `SFR`、`SFG`、`SFY` 等函数在终端中输出彩色字体 (Red / Green / Yellow / Blue / Magenta / Cyan / White).
 
-为函数添加运行时间监测等功能
+```python
+from husfort.qutility import SFG, SFR, SFY
 
-#### check_and_mkdir等函数
+print(f"This output is normal, {SFG('but this output is green')}")
+print(f"{SFR('error')}, {SFY('warning')}")
+```
 
-创建,删除文件和文件夹
+#### qtimer 装饰器
+
+为函数添加运行时间监测.
+
+```python
+from husfort.qutility import qtimer
+
+@qtimer
+def my_func():
+    ...
+```
+
+#### 文件与目录操作
+
+| 函数 | 说明 |
+|------|------|
+| `check_and_mkdir(dir_path)` | 目录不存在时创建 |
+| `check_and_makedirs(dir_path)` | 递归创建多级目录 |
+| `remove_files_in_the_dir(dir_path)` | 删除目录下所有文件 |
+| `check_and_remove_tree(dir_path)` | 删除目录树 |
 
 #### error_handler
 
-处理多进程中抛出的错误, 否则可能无法得到正确的回报.
+处理多进程中抛出的错误.
+
+```python
+from husfort.qutility import error_handler
+from multiprocessing import Pool
+
+with Pool() as pool:
+    pool.map_async(my_func, args, error_callback=error_handler)
+```
 
 #### batched
 
-分批处理可迭代的数据
+分批处理可迭代数据.
 
 ```python
-from qtools_sxzq.qwidgets import SFG
+from husfort.qutility import batched
 
-print(f"This output is normal, {SFG('but this output is green')}")
+for batch in batched(range(100), batch_size=10):
+    print(list(batch))
 ```
 
 ---
 
 ### qcalendar
 
-提供一个CCalendar类,处理日频的交易日期
+提供 `CCalendar` 类处理日频交易日期, 以及 `CCalendarSection` / `CCalendarMonth` 类处理日期区间.
 
 ```python
-from qtools_sxzq.qcalendar import CCalendar
+from husfort.qcalendar import CCalendar
 
 calendar = CCalendar("calendar.csv")
 trade_dates = calendar.get_iter_list(bgn_date="20120104", stp_date="20120111")
 print(trade_dates)
-```
-
-输出
-
-```bash
-    ['20120104', '20120105', '20120106', '20120109', '20120110']
+# ['20120104', '20120105', '20120106', '20120109', '20120110']
 ```
 
 更多用法请参考该类的方法.
-
 
 ---
 
 ### qsqlite
 
-提供一个`CMgrSqlDb` `CDbStruct`等类来管理`sqldb`数据库
+提供 `CMgrSqlDb`、`CDbStruct`、`CSqlTable`、`CSqlVar` 等类来管理 SQLite 数据库.
 
 ```python
 import pandas as pd
 import scipy.stats as sps
 import random
+from husfort.qcalendar import CCalendar
+from husfort.qsqlite import CMgrSqlDb, CDbStruct, CSqlTable, CSqlVar
 
+calendar_path = r"/path/to/calendar.csv"
+calendar = CCalendar(calendar_path)
+h_dates = calendar.get_iter_list(bgn_date="20120101", stp_date="20250101")
 
-def create_data(nrow: int, ncol: int, cnames: list[str], hist_dates: list[str],
-                random_state: int = None) -> pd.DataFrame:
-    _data = sps.norm.rvs(size=(nrow, ncol), loc=0, scale=1, random_state=random_state)
-    _df = pd.DataFrame(data=_data, columns=cnames)
-    _df["trade_date"] = hist_dates[0:nrow]
-    _df["instrument"] = random.choices(population=list("abcd"), k=nrow)
-    _df = _df[["trade_date"] + ["instrument"] + cnames]
-    return _df
+nr, nc = 20, 5
+cnms = [f"C{_:02d}" for _ in range(nc)]
+table = CSqlTable(
+    name="testTable",
+    primary_keys=[CSqlVar("trade_date", "TEXT"), CSqlVar("instrument", "TEXT")],
+    value_columns=[CSqlVar(c, "REAL") for c in cnms],
+)
+sql_lib = CMgrSqlDb(
+    db_save_dir=r"/tmp",
+    db_name="test.db",
+    table=table,
+    mode="w",
+    verbose=True,
+)
 
+# 写入数据
+sql_lib.update(df)
 
-if __name__ == "__main__":
-    from qtools_sxzq.qcalendar import CCalendar
-    from qtools_sxzq.qsqlite import CMgrSqlDb, CSqlTable, CSqlVar
+# 读取数据
+df0 = sql_lib.read()
 
-    calendar_path = r"/path/to/calendar"
-    calendar = CCalendar(calendar_path)
-    h_dates = calendar.get_iter_list(bgn_date="20120101", stp_date="20250101")
+# 条件查询
+df1 = sql_lib.read_by_conditions(conditions=[("trade_date", "<=", "20120131")])
 
-    db_save_dir, db_name = r"/tmp", "test.db"
-    table_name = "testTable"
-    nr, nc = 20, 5
-    cnms = [f"C{_:02d}" for _ in range(nc)]
-    df = create_data(nr * 2, nc, cnames=cnms, hist_dates=h_dates)
-    df_head, df_tail = df.head(nr), df.tail(nr).reset_index(drop=True)
-    table = CSqlTable(
-        name=table_name,
-        primary_keys=[CSqlVar("trade_date", "TEXT"), CSqlVar("instrument", "TEXT")],
-        value_columns=[CSqlVar(_, "REAL") for _ in cnms]
-    )
-    sql_lib = CMgrSqlDb(
-        db_save_dir=db_save_dir,
-        db_name=db_name,
-        table=table,
-        mode="w",
-        verbose=True,
-    )
+# 首尾查看
+print(sql_lib.head(value_columns=["trade_date", "C00"]))
+print(sql_lib.tail(n=10))
 
-    # --- first writing
-    append_date = df_head["trade_date"].iloc[0]
-    if sql_lib.check_continuity(incoming_date=append_date, calendar=calendar) == 0:
-        sql_lib.update(df_head)
-        df0 = sql_lib.read()
-        print(f"The original data length = {len(df0)} ")
-        print(df0)
-
-    # --- appending
-    append_date = df_tail["trade_date"].iloc[0]
-    if sql_lib.check_continuity(incoming_date=append_date, calendar=calendar) == 0:
-        sql_lib.update(df_tail)
-        print("Append data to lib")
-        df0 = sql_lib.read()
-        print(f"After appending, data length = {len(df0)} ")
-        print(df0)
-
-    # --- head and tail
-    print("The first 5 rows from the data, with columns=['trade_date', 'C00']")
-    print(sql_lib.head(value_columns=["trade_date", "C00"]))
-    print("The last 10 rows from the data")
-    print(sql_lib.tail(n=10))
-
-    # --- query
-    df1 = sql_lib.read_by_conditions(conditions=[("trade_date", "<=", "20120131")])
-    print("Query: trade_date <= '20120131'")
-    print(df1)
-
-    df3 = sql_lib.read_by_conditions(conditions=[("instrument", "=", "d"), ("trade_date", "<", "20120205")])
-    print("Query: (instrument = 'd') AND (trade_date < '20120205')")
-    print(df3)
-
-    # --- continuity check
-    sql_lib.check_continuity(incoming_date="20120306", calendar=calendar)
-    sql_lib.check_continuity(incoming_date="20120307", calendar=calendar)
-    sql_lib.check_continuity(incoming_date="20120308", calendar=calendar)
+# 连续性检查
+sql_lib.check_continuity(incoming_date="20120306", calendar=calendar)
 ```
 
 更多用法请参考该类的方法.
@@ -173,21 +162,32 @@ if __name__ == "__main__":
 
 ### qh5
 
-类比qsqlite, 提供一个管理h5文件的类
+类比 `qsqlite`, 提供 `CDbHDF5` 和 `CDbHDF5PlusTDates` 类来管理 HDF5 (`.h5`) 文件.
+
+```python
+from husfort.qh5 import CDbHDF5
+```
 
 ---
 
 ### qplot
 
-`matplotlib`基础上进一步封装的绘图函数, 在Pycharm/VSCode智能提示加持下, 绘图参数更加清晰.
+在 `matplotlib` 基础上进一步封装的绘图类, 在 PyCharm / VSCode 智能提示加持下绘图参数更加清晰.
 
-以下示例
+主要类:
 
-#### 生成数据
+| 类 | 说明 |
+|----|------|
+| `CPlotLines` | 折线图 |
+| `CPlotLinesWithBars` | 折线 + 柱状双轴图 |
+| `CPlotLinesWithLines` | 双轴折线图 |
+| `CPlotBarsV` | 垂直柱状图 |
+| `CPlotBarsH` | 水平柱状图 |
 
 ```python
 import pandas as pd
 from random import randint
+from husfort.qplot import CPlotLines
 
 test_size = 60
 data = pd.DataFrame(
@@ -197,77 +197,44 @@ data = pd.DataFrame(
         "y": [randint(95, 105) for _ in range(test_size)],
     }
 ).set_index("T")
-```
-
-#### 绘图
-
-```python
-from qtools_sxzq.qplot import CPlotLines
 
 my_artist = CPlotLines(
     plot_data=data,
-    fig_name="test-qplot-lines",  # 保存图片文件名
-    fig_save_dir=r"/tmp",  # 保存位置
-    line_width=4,  # 线条宽度
-    line_style=["-", "-."],  # 线条样式
-    line_color=["#DC143C", "#228B22"],  # 线条颜色,可以用utility.view_colors查看更多颜色
+    fig_name="test-qplot-lines",
+    fig_save_dir=r"/tmp",
+    line_width=4,
+    line_style=["-", "-."],
+    line_color=["#DC143C", "#228B22"],  # 可用 view_colors 脚本查看更多颜色
 )
 my_artist.plot()
-my_artist.set_legend(size=16, loc="upper left")  # 设置图例
-my_artist.set_axis_x(  # 设置x轴
-    xtick_count=10,  # x轴标签数量
-    # xtick_spread=20, # x轴标签间距,与数量不要同时设置
-    xlabel="Test-XLabels",  # x轴标签
-    xtick_label_size=24,  # x轴刻度标签大小
-    xtick_label_rotation=45,  # x轴刻度标签旋转角度
+my_artist.set_legend(size=16, loc="upper left")
+my_artist.set_axis_x(
+    xtick_count=10,
+    xlabel="Test-XLabels",
+    xtick_label_size=24,
+    xtick_label_rotation=45,
 )
 my_artist.set_title(title="test-qplot-lines", size=48, loc="left")
 my_artist.save_and_close()
 ```
 
-**绘图时请确认data是pd.DataFrame, 且索引index是字符串格式,否则set_axis_x()函数可能不会正常运行**
+**注意: `plot_data` 须为 `pd.DataFrame`, 且索引 `index` 为字符串格式, 否则 `set_axis_x()` 可能不会正常运行.**
 
 ---
 
 ### qevaluation
 
-回测绩效评估模块, 计算收益率(净值)曲线的常见风险收益指标
-
-#### 生成模拟的收益率序列
+回测绩效评估模块, 通过 `CNAV` 类计算收益率/净值曲线的常见风险收益指标.
 
 ```python
 import scipy.stats as sps
 import pandas as pd
+from husfort.qevaluation import CNAV
 
 n = 250
 ret_val = sps.norm.rvs(size=n, loc=0.001, scale=0.01, random_state=0)
-start_date = pd.Timestamp.now()
-date_range = pd.date_range(start=start_date, periods=n)
+date_range = pd.date_range(start=pd.Timestamp.now(), periods=n)
 ret_srs = pd.Series(data=ret_val, index=date_range)
-print(ret_srs)
-```
-
-输出结果
-
-```bash
-2025-01-17 10:42:37.590840    0.018641
-2025-01-18 10:42:37.590840    0.005002
-2025-01-19 10:42:37.590840    0.010787
-2025-01-20 10:42:37.590840    0.023409
-2025-01-21 10:42:37.590840    0.019676
-                                ...
-2025-09-19 10:42:37.590840   -0.015760
-2025-09-20 10:42:37.590840    0.012523
-2025-09-21 10:42:37.590840    0.011796
-2025-09-22 10:42:37.590840   -0.007134
-2025-09-23 10:42:37.590840   -0.013664
-```
-
-调用`qevaluation`计算指标
-
-```python
-import pandas as pd
-from qtools_sxzq.qevaluation import CNAV
 
 nav = CNAV(input_srs=ret_srs, input_type="RET")
 nav.cal_all_indicators()
@@ -279,42 +246,181 @@ print(pd.Series(sum_data))
 
 输出结果
 
-```bash
-retMean                        0.001318 # 收益率均值
-retStd                         0.009981 # 收益率标准差
-hpr                            0.372830 # 持有期收益
-retAnnual                      0.329452 # 年华收益
-volAnnual                      0.157813 # 年化波动
-sharpe                         2.087605 # 夏普比率
-calmar                         2.758407 # 卡玛比率
-mdd                            0.119436 # 最大回撤
-mddT         2025-04-07 10:42:37.590840 # 最大回撤结束时间
-lddDur                               49 # 最长回撤期
-lddDurT      2025-04-07 10:42:37.590840 # 最长回撤期结束时间
-lrd                                  68 # 最长恢复期
-lrdT         2025-04-26 10:42:37.590840 # 最长恢复期结束时间
+```
+retMean      0.001318  # 收益率均值
+retStd       0.009981  # 收益率标准差
+hpr          0.372830  # 持有期收益
+retAnnual    0.329452  # 年化收益
+volAnnual    0.157813  # 年化波动
+sharpe       2.087605  # 夏普比率
+calmar       2.758407  # 卡玛比率
+mdd          0.119436  # 最大回撤
+mddT         ...       # 最大回撤结束时间
+lddDur       49        # 最长回撤期(天)
+lddDurT      ...       # 最长回撤期结束时间
+lrd          68        # 最长恢复期(天)
+lrdT         ...       # 最长恢复期结束时间
 ```
 
 ---
 
 ### qinstruments
 
-提供一个类来管理管理期货合约要素
+提供 `CInstrument` 和 `CInstruMgr` 类管理期货合约要素, 以及 `parse_instrument_from_contract` 工具函数.
+
+```python
+from husfort.qinstruments import CInstruMgr, parse_instrument_from_contract
+
+instrument = parse_instrument_from_contract("rb2501")  # -> "rb"
+```
 
 ---
 
 ### qlog
 
-提供一个自定义的格式logger类
+提供 `define_logger` 函数和全局 `logger` 对象 (基于 `loguru`), 用于统一日志格式.
 
----
+```python
+from husfort.qlog import define_logger, logger
 
-### qsimulation
-
-提供一个高精度日频策略测试
+define_logger()
+logger.info("This is an info message")
+```
 
 ---
 
 ### qmails
 
-提供一个自动收发邮件的类
+提供 `CAgentEmail` 类实现自动收发电子邮件, 支持文本附件 (`CAttachmentText`).
+
+```python
+from husfort.qmails import CAgentEmail, CAttachmentText
+```
+
+---
+
+### qmultiprocessing
+
+提供多进程/单进程任务调度工具, 集成 `rich` 进度条展示.
+
+| 函数/类 | 说明 |
+|---------|------|
+| `mul_process_for_tasks` | 多进程并行执行任务列表 |
+| `uni_process_for_tasks` | 单进程顺序执行任务列表 |
+| `CAgentQueue` | 进程间通信队列代理 |
+
+```python
+from husfort.qmultiprocessing import mul_process_for_tasks
+
+mul_process_for_tasks(
+    tasks=my_task_list,
+    processes=4,
+)
+```
+
+---
+
+### qoptimization
+
+提供基于 `scipy` 和 `numba` 的投资组合优化器.
+
+| 类 | 说明 |
+|----|------|
+| `COptimizerPortfolioUtility` | 最大化效用函数 (均值-方差) |
+| `COptimizerPortfolioSharpe` | 最大化夏普比率 |
+
+```python
+from husfort.qoptimization import COptimizerPortfolioSharpe
+
+optimizer = COptimizerPortfolioSharpe(
+    mean=expected_returns,
+    cov=covariance_matrix,
+)
+result = optimizer.optimize()
+```
+
+---
+
+### qremote
+
+提供通过 SSH/SCP 在远程主机间传输文件的工具函数.
+
+```python
+from husfort.qremote import CHost, scp_from_remote, scp_to_remote
+
+host = CHost(hostname="192.168.1.1", username="user", port=22)
+scp_from_remote(host, remote_path="/data/file.csv", local_path="/tmp/file.csv")
+scp_to_remote(host, local_path="/tmp/file.csv", remote_path="/data/file.csv")
+```
+
+---
+
+### qsimulation
+
+提供高精度日频策略回测框架, 支持期货合约换月、持仓管理、成本计算等.
+
+主要类:
+
+| 类 | 说明 |
+|----|------|
+| `CSimulation` | 回测主类 |
+| `CAccount` | 账户管理 |
+| `CPosition` | 持仓管理 |
+| `CTrade` | 交易记录 |
+| `CMgrMajContract` | 主力合约管理 |
+| `CMgrMktData` | 行情数据管理 |
+| `CSignal` | 信号管理 |
+
+---
+
+### qsimquick
+
+在 `qsimulation` 基础上提供轻量化的快速回测工具 `CSimQuick`, 适合因子/信号的快速验证.
+
+```python
+from husfort.qsimquick import CSimQuick
+```
+
+---
+
+### qdataviewer
+
+提供 CSV、SQLite、HDF5 文件的数据查看类, 支持列过滤、条件筛选、排序、头尾截取等.
+
+| 类 | 说明 |
+|----|------|
+| `CDataViewerCSV` | 查看 CSV/Excel 文件 |
+| `CDataViewerSql` | 查看 SQLite 数据库 |
+| `CDataViewerH5` | 查看 HDF5 文件 |
+
+---
+
+### qviewer_pnl
+
+提供基于 `rich` 的实时盈亏 (PnL) 终端查看器, 支持天勤账户数据展示 (Windows).
+
+---
+
+## Utility Scripts
+
+安装后以下脚本被复制到系统路径, 可直接在终端调用:
+
+| 脚本 | 说明 |
+|------|------|
+| `view_csv` | 在终端查看 CSV/Excel 文件内容 |
+| `view_sql` | 在终端查看 SQLite 数据库表内容 |
+| `view_h5` | 在终端查看 HDF5 文件内容 |
+| `ls_sql` | 列出 SQLite 数据库中的所有表 |
+| `view_colors` | 在终端展示内置颜色名称及色值对照表 |
+| `view_palette` | 在终端展示调色板 |
+| `get_datetime_fromtimestamp` | 将 Unix 时间戳转换为可读时间 |
+| `create_sprites_sheet` | 将多张图片合并为一张精灵图 |
+
+示例:
+
+```bash
+view_csv /path/to/file.csv --head 10
+view_sql /path/to/db.db --table myTable
+ls_sql /path/to/db.db
+get_datetime_fromtimestamp -t 1700000000
+```
